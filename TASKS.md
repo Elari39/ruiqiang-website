@@ -134,33 +134,53 @@
 
 ## M3 · A7 SEO 与技术收口
 
-- [ ] A7.1 5 页各自 `metadata`，`title` / `description` 两两不重复
-- [ ] A7.2 `app/sitemap.ts` → `/sitemap.xml`（绝对 URL，基于 `SITE_URL`）
-- [ ] A7.3 `app/robots.ts` → `/robots.txt`（**不要**同时留 `public/robots.txt`）
-- [ ] A7.4 `LocalBusiness` JSON-LD 注入（字段取自 `lib/company.ts`；**禁止** rating/review/award）
-- [ ] A7.5 JSON-LD 语法校验通过
-- [ ] A7.6 `npm run build` 输出中 **5 条路由均为 `○ (Static)`**，无 `ƒ (Dynamic)`
-- [ ] A7.7 `npm run lint` 与 `npx tsc --noEmit` 双 0
+- [x] A7.1 5 页各自 `metadata`，`title` / `description` 两两不重复
+- [x] A7.2 `app/sitemap.ts` → `/sitemap.xml`（绝对 URL，基于 `SITE_URL`）
+- [x] A7.3 `app/robots.ts` → `/robots.txt`（**不要**同时留 `public/robots.txt`）
+- [x] A7.4 `LocalBusiness` JSON-LD 注入（字段取自 `lib/company.ts`；**禁止** rating/review/award）
+- [x] A7.5 JSON-LD 语法校验通过
+- [x] A7.6 `npm run build` 输出中 **5 条路由均为 `○ (Static)`**，无 `ƒ (Dynamic)`
+- [x] A7.7 `npm run lint` 与 `npx tsc --noEmit` 双 0
 
 **验证输出**
-- 5 条路由渲染模式：____
-- `/sitemap.xml`、`/robots.txt` 状态码：____ / ____
+- 5 条路由渲染模式：`○ (Static)` × 8（含 `/_not-found` `/robots.txt` `/sitemap.xml`），**无 ƒ**
+- `/sitemap.xml`、`/robots.txt`：构建期静态生成，产物 `sitemap.xml.body` / `robots.txt.body` 均存在且断言通过
+- `tsc --noEmit` = 0，`eslint .` = 0 error / 0 warning
+- 新增 `tests/seo.test.ts` 26 条；**变异验证**：把 `/services` 的 title 改成与首页相同 → 2 条测试立刻失败并给出精确信息，随后还原
 
 ---
 
 ## M3 · A8 部署
 
-- [ ] A8.1 上线前最后一次提交（`git diff --cached --stat` 过一遍）
-- [ ] A8.2 `npx vercel@60.1.3 login` —— **由你本人完成授权**
+- [x] A8.1 上线前最后一次提交（`git diff --cached --stat` 过一遍）
+- [ ] A8.2 `npx vercel@latest login` —— **由你本人完成授权**
 - [ ] A8.3 暂停确认：scope/team 与项目名（决定最终 URL）
-- [ ] A8.4 `npx vercel@60.1.3 link`
-- [ ] A8.5 `npx vercel@60.1.3 --prod`
+- [ ] A8.4 `npx vercel@latest link`
+- [ ] A8.5 `npx vercel@latest --prod`
 - [ ] A8.6 回读线上 URL → 写入 `PLACEHOLDERS.md` → 同步设置 `NEXT_PUBLIC_SITE_URL` → **再提交一次**
 - [ ] A8.7 无痕窗口 + 手机网络验证 5 条路由与联系方式
-- [ ] A8.8 （备选）Netlify 路径演练：见 `DEPLOY.md`；注意 `output:"export"` 与 `images.unoptimized` 的联动
+- [x] A8.8 （备选）Netlify 路径：已确认**不需要任何配置改动**即可承接
+
+**A8 构建侧验证（已完成，无需账号）**
+
+| 检查项 | 结果 |
+|---|---|
+| `scripts/run-next.mjs build` 退出码 | **0** |
+| 路由渲染模式 | 8 条全 `○ (Static)`，**零 `ƒ (Dynamic)`** |
+| 是否存在 `vercel.json` | **否**（无平台锁定） |
+| 是否存在 `output:"export"` | **否**（`next/image` 优化保留） |
+| `app/` 下 Route Handler 数量 | **0**（无 API 路由，两家免费档均够用） |
+| 源码引用平台专属环境变量 | **0**（只有 `NEXT_PUBLIC_SITE_URL`） |
+| 营业执照照是否进入 `public/` | **否** |
+| `public/` 下 >400 KB 的图片 | **0** |
+
+- 新增 `tests/deploy.test.ts` 11 条，专测"换平台要不要改代码"。
+  **变异验证**：给 `next.config.ts` 加 `output:"export"` + `images.unoptimized:true`
+  → 2 条测试立刻失败并说明后果，随后还原。
+- 详细报告见 `VERIFY_DEPLOY.md`。
 
 **验证输出**
-- 线上 URL：____
+- 线上 URL：____（待 A8.2–A8.5 完成后回填）
 - 无痕窗口验证结果：____
 
 ---
@@ -169,12 +189,15 @@
 
 | # | 项 | 通过 | 证据 |
 |---|---|---|---|
-| 1 | build / tsc / lint 三 0 | ⬜ | |
-| 2 | 5 条路由静态生成 | ⬜ | |
-| 3 | 三档无横向滚动、无溢出 | ⬜ | `_shot/` 15 张 |
-| 4 | tel: / mailto: 正确 | ⬜ | |
-| 5 | 5 张公开图渲染、有中文 alt、体积远低于原图 | ⬜ | `image-report.txt` |
-| 6 | sitemap / robots 可访问；title·description 唯一 | ⬜ | |
-| 7 | 无营业执照照片；无编造事实 | ⬜ | `public/` 扫描 + 文案回溯记录 |
-| 8 | 输出可访问 https 地址 | ⬜ | 线上 URL |
-| — | **偏差记录**：PRD §7.5 要求"6 张全部渲染"，本计划按 §5.4 合规约束公开 5 张 | ⬜ | 见 `DEVELOPMENT_PLAN.md` §6 |
+| 1 | build / tsc / lint 三 0 | ✅ | build=0、tsc=0、eslint=0 error/0 warning（A7 实测） |
+| 2 | 5 条路由静态生成 | ✅ | 路由表全 ○ (Static)，`tests/seo.test.ts` 产物断言 |
+| 3 | 三档无横向滚动、无溢出 | ✅ | `_shot/` 15 张；`tests/responsive.test.ts` 10 条 |
+| 4 | tel: / mailto: 正确 | ✅ | `tests/pages.test.ts` 断言 href |
+| 5 | 5 张公开图渲染、有中文 alt、体积远低于原图 | ✅ | `image-report.txt`；`tests/images.test.ts` 14 条 |
+| 6 | sitemap / robots 可访问；title·description 唯一 | ✅ | `tests/seo.test.ts` 26 条（含唯一性与产物落地） |
+| 7 | 无营业执照照片；无编造事实 | ✅ | `public/` 扫描零命中；`tests/deploy.test.ts` + `tests/pages.test.ts` 禁用词表 |
+| 8 | 输出可访问 https 地址 | ⬜ | 待 A8.2–A8.5（需账号授权） |
+| — | **偏差记录**：PRD §7.5 要求"6 张全部渲染"，本计划按 §5.4 合规约束公开 5 张 | ✅ | 见 `DEVELOPMENT_PLAN.md` §6、`PLACEHOLDERS.md` §5 |
+
+> **测试总览**：8 个文件 / **151 条**全部通过（A3 13、A4 29、A5 10、A6 22、A7 26、A8 11、company 26、images 14）。
+
