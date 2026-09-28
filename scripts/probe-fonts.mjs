@@ -52,7 +52,6 @@ function run(cmd, args, opts = {}) {
   if (fs.existsSync(html)) {
     const h = fs.readFileSync(html, "utf8");
     refs = (h.match(/\/_next\/static\/media\/[^"]+\.(woff2?|ttf)/g) || []).length;
-    const notoRefs = (h.match(/\/_next\/static\/media\/[^"]+\.(woff2?|ttf)/g) || []).filter(() => true).length;
     console.log(`font refs in prerendered HTML: ${refs}`);
     console.log("has preload for fonts:", /rel="preload"[^>]*as="font"/.test(h));
   } else {

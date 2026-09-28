@@ -3,6 +3,9 @@ import { Archivo_Black, Space_Grotesk, Noto_Sans_SC } from "next/font/google";
 import "./globals.css";
 import { SITE_NAME, SITE_TAGLINE, SITE_URL } from "@/lib/site";
 import { COMPANY } from "@/lib/company";
+import { SiteHeader } from "@/components/SiteHeader";
+import { SiteFooter } from "@/components/SiteFooter";
+import { MobileCallBar, MOBILE_CALL_BAR_HEIGHT } from "@/components/MobileCallBar";
 
 /*
  * 注意：shadcn init 会自动往本文件注入一个 `Geist` 字体并给它 `--font-sans`。
@@ -84,12 +87,28 @@ export default function RootLayout({
   ].join(" ");
 
   return (
-    <html
-      lang="zh-CN"
-      className={`${fontVars} h-full antialiased font-sans`}
-    >
+    <html lang="zh-CN" className={`${fontVars} h-full antialiased font-sans`}>
       <body className="min-h-full flex flex-col bg-background text-foreground">
-        {children}
+        <SiteHeader />
+
+        {/*
+         * 底部内边距为手机悬浮致电条预留：数值直接取自 MobileCallBar 导出的常量，
+         * 避免两处各写一个数字后走偏（悬浮条永久遮挡页脚是这类组件的典型真实缺陷）。
+         * md 断点起悬浮条隐藏，内边距随之归零。
+         */}
+        <div
+          className="flex flex-1 flex-col pb-[var(--mobile-call-bar-space)] md:pb-0"
+          style={
+            {
+              "--mobile-call-bar-space": `${MOBILE_CALL_BAR_HEIGHT}px`,
+            } as React.CSSProperties
+          }
+        >
+          {children}
+        </div>
+
+        <SiteFooter />
+        <MobileCallBar />
       </body>
     </html>
   );
