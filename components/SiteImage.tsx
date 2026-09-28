@@ -48,7 +48,22 @@ export function SiteImage({
         srcSet={WIDTHS.map((w) => `/images/${imgKey}-${w}.webp ${w}w`).join(", ")}
         sizes={sizes}
       />
-      {/* 兜底：不支持 picture 的旧环境取 WebP 大图 */}
+      {/*
+       * 兜底：不支持 <picture> / <source> 的旧环境取 WebP 大图。
+       *
+       * ⚠️ 属性名必须是 **fetchPriority（首字母大写 P）**，不能写成全小写的 `fetchpriority`。
+       *
+       * 这条注释是踩坑记录，请勿"顺手改回小写"：
+       *   小写 `fetchpriority` 是浏览器最终认的 **HTML 属性名**，但它不是 React 的属性名。
+       *   写成小写时 React 19 会：
+       *     ① 在开发控制台报 `Invalid DOM property \`fetchpriority\`. Did you mean \`fetchPriority\`?`
+       *     ② 关键：**不会**把该属性写进 DOM —— 于是"提前加载首屏图"这个优化静默失效，
+       *        页面看着完全正常，只有性能变差，属于最难发现的一类回归。
+       *   React 19 的 @types 已收录 `fetchPriority?: "high" | "low" | "auto"`，
+       *   所以用小写还要额外加 @ts-expect-error 才能过类型检查 —— 那个抑制本身
+       *   就是"属性名写错了"的信号，而不是"类型定义不全"。
+       *   React 会把 camelCase 正确落到 DOM 的小写属性上，无需我们手动写小写。
+       */}
       <img
         src={`/images/${imgKey}-1600.webp`}
         alt={alt}
@@ -56,8 +71,7 @@ export function SiteImage({
         height={height}
         loading={priority ? "eager" : "lazy"}
         decoding={priority ? "sync" : "async"}
-        // @ts-expect-error fetchPriority 在 React 19 类型里尚未收录到 img 属性
-        fetchpriority={priority ? "high" : undefined}
+        fetchPriority={priority ? "high" : undefined}
         className={cn("h-auto w-full object-cover", className)}
       />
     </picture>

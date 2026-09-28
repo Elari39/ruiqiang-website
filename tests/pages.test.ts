@@ -285,6 +285,68 @@ describe("产物层：图片渲染（PRD §7.5）", () => {
     }
     expect(offenders).toEqual([]);
   });
+
+  /**
+   * 首屏图必须带 fetchPriority="high"。
+   *
+   * ## 为什么这条值得单独测（真实踩坑记录）
+   *
+   * 属性名是 **fetchPriority**（大写 P），不是全小写的 `fetchpriority`。
+   * 小写是浏览器最终认的 HTML 属性名，但**不是 React 的属性名**。
+   * 写成小写时 React 19 的行为是：
+   *   ① 开发控制台报 `Invalid DOM property \`fetchpriority\`. Did you mean \`fetchPriority\`?`
+   *   ② 最关键：**静默不把属性写进 DOM** —— 页面看起来完全正常，
+   *      只有首屏图的加载优先级悄悄退化成了默认值。性能回归，肉眼不可见。
+   *
+   * 所以这里断言的是**产物 DOM 里真的有小写属性**（浏览器只认小写），
+   * 而不是"源码里我写了 fetchPriority"。
+   */
+  it("首屏图带 fetchpriority=\"high\"（否则首屏加载优先级静默失效）", () => {
+    const doc = docs.get("/")!;
+    const imgs = [...doc.matchAll(/<img\b[^>]*>/g)].map((m) => m[0]);
+    const withPriority = imgs.filter((t) => /fetchpriority="high"/i.test(t));
+    expect(
+      withPriority.length,
+      "首页没有任何 <img> 带 fetchpriority=\"high\"。检查 components/SiteImage.tsx " +
+        "是否误写成了全小写的 fetchpriority —— 那样 React 会拒绝写入 DOM 且只在控制台警告。",
+    ).toBeGreaterThan(0);
+  });
+
+  it("★ 全站源码不得出现全小写 fetchpriority（React 会拒写 DOM）", () => {
+    const offenders: string[] = [];
+    for (const { file, text } of allSiteSources()) {
+      // 去掉注释：上面那段踩坑说明里正大光明地提到了小写写法，不能算违规
+      const code = stripComments(text);
+      // 匹配 JSX 属性位置的小写写法：fetchpriority= 或 fetchpriority:
+      if (/\bfetchpriority\s*[=:]/.test(code)) {
+        offenders.push(file);
+      }
+    }
+    expect(
+      offenders,
+      `这些文件用了全小写 fetchpriority（React 不会写进 DOM，且开发时会告警）：\n${offenders.join("\n")}\n` +
+        `应改为 camelCase 的 fetchPriority`,
+    ).toEqual([]);
+  });
+
+  it("★ 源码中不允许用 @ts-expect-error 压制 img 的属性名错误", () => {
+    // React 19 的 @types 已收录 fetchPriority。给 img 加 @ts-expect-error
+    // 是一个强信号："我正在把一个类型系统不认识的属性名按上去"。
+    // 这条断言把那种"为了让类型检查闭嘴而掩盖错误属性名"的写法挡在门外。
+    const offenders: string[] = [];
+    for (const { file, text } of allSiteSources()) {
+      // 只看紧邻 <img 的几条属性行，避免误伤其他合理的 @ts-expect-error
+      const imgBlocks = text.match(/<img\b[\s\S]{0,600}?\/>/g) ?? [];
+      for (const block of imgBlocks) {
+        if (block.includes("@ts-expect-error")) offenders.push(file);
+      }
+    }
+    expect(
+      offenders,
+      `这些文件在 <img> 上用了 @ts-expect-error。若原因是属性名被拒，` +
+        `说明属性名写错了（应为 camelCase），而不是类型定义不全：\n${offenders.join("\n")}`,
+    ).toEqual([]);
+  });
 });
 
 describe("产物层：全站组件（PRD §4.6）", () => {
