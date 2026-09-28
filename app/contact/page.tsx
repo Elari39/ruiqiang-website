@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { CopyAddress } from "@/components/CopyAddress";
+import { MapEmbed } from "@/components/MapEmbed";
 import { COMPANY, MAIL_HREF, TEL_HREF } from "@/lib/company";
 
 export const metadata: Metadata = {
@@ -79,14 +80,19 @@ export default function ContactPage() {
         </div>
       </section>
 
-      {/* 在线地图（A6 接入） */}
+      {/* 在线地图（PRD §4.5，实现路线见 MapEmbed 顶部说明） */}
       <section aria-labelledby="map-section" className="border-t-2 border-border">
         <div className="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6 lg:py-16">
           <h2 id="map-section" className="text-2xl sm:text-3xl">
             位置地图
           </h2>
-          {/* A6: MapEmbed 组件插入此处 */}
-          <div id="map-embed-slot" className="mt-6" />
+          <p className="mt-3 max-w-3xl text-muted-foreground">
+            公司注册地址见下方。点击按钮可在官方地图中查看并直接导航。
+          </p>
+
+          <div className="mt-6">
+            <MapEmbed />
+          </div>
         </div>
       </section>
     </>

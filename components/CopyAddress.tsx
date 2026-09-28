@@ -1,52 +1,33 @@
 "use client";
 
 /**
- * 可复制的地址（PRD §4.5）。
+ * 可复制的地址（PRD §4.5）
  *
- * 剪贴板 API 的实际坑：
- *   `navigator.clipboard` 只在**安全上下文**（https 或 localhost）可用。
- *   部署到 Vercel 后是 https，没问题；但本地用 IP 访问、或将来落到 http 环境时
- *   它会是 undefined，直接调用会抛 TypeError。
- *   因此这里保留 `document.execCommand("copy")` 兜底路径 —— 它虽已废弃，
- *   但在不安全上下文里仍是唯一可用方案。
+ * ## 为什么这个组件比看起来复杂
  *
- * 提示语必须用 text 节点渲染（而不是 alert），且要能被读屏软件播报（role="status"）。
+ * `navigator.clipboard.writeText` 有两个真实边界，生产上都会遇到：
+ *   1. **只在安全上下文可用**（https / localhost）。落到 http、或用局域网 IP
+ *      访问时 `navigator.clipboard` 是 `undefined` —— 直接调用会抛 TypeError。
+ *   2. **即便存在也可能被拒**：用户拒绝剪贴板权限、页面不在焦点、或某些
+ *      内嵌 WebView，`writeText` 会 reject。
+ *
+ * 降级策略本身写在 `lib/clipboard.ts`（纯逻辑，可在 Node 里穷举测试），
+ * 本组件只负责：调用它、给出**可见反馈**、并在自动复制不可用时
+ * 帮用户选中文字 + 给出明确的手动指引。
+ *
+ * ## 反馈要求（A6 验收）
+ * 成功与失败都必须有可见反馈，且要能被读屏软件播报（role="status"）。
+ * 反馈文案放在按钮下方而非 alert，避免打断用户、也不阻塞截图验证。
  */
 import { useEffect, useRef, useState } from "react";
+import { copyText } from "@/lib/clipboard";
 
-async function copyText(text: string): Promise<boolean> {
-  // 首选：异步剪贴板 API
-  if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-    try {
-      await navigator.clipboard.writeText(text);
-      return true;
-    } catch {
-      // 权限被拒或非安全上下文，落到兜底
-    }
-  }
-
-  // 兜底：textarea + execCommand
-  if (typeof document === "undefined") return false;
-  try {
-    const ta = document.createElement("textarea");
-    ta.value = text;
-    ta.setAttribute("readonly", "");
-    ta.style.position = "fixed";
-    ta.style.top = "-1000px";
-    ta.style.opacity = "0";
-    document.body.appendChild(ta);
-    ta.select();
-    const ok = document.execCommand("copy");
-    document.body.removeChild(ta);
-    return ok;
-  } catch {
-    return false;
-  }
-}
+type CopyState = "idle" | "ok" | "manual";
 
 export function CopyAddress({ address }: { address: string }) {
-  const [state, setState] = useState<"idle" | "ok" | "fail">("idle");
+  const [state, setState] = useState<CopyState>("idle");
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const textRef = useRef<HTMLParagraphElement>(null);
 
   useEffect(() => {
     return () => {
@@ -55,15 +36,34 @@ export function CopyAddress({ address }: { address: string }) {
   }, []);
 
   const onCopy = async () => {
-    const ok = await copyText(address);
-    setState(ok ? "ok" : "fail");
+    const result = await copyText(address);
+    setState(result);
+
     if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => setState("idle"), 2200);
+    timer.current = setTimeout(() => setState("idle"), 4000);
+
+    // 手动路径下顺手帮用户选中文字，少一步操作
+    if (result === "manual") {
+      try {
+        const sel = window.getSelection();
+        if (textRef.current && sel) {
+          const range = document.createRange();
+          range.selectNodeContents(textRef.current);
+          sel.removeAllRanges();
+          sel.addRange(range);
+        }
+      } catch {
+        // 选区失败不影响已给出的手动指引
+      }
+    }
   };
 
   return (
     <div className="mt-2">
-      <p className="break-all">{address}</p>
+      <p ref={textRef} className="break-all select-all">
+        {address}
+      </p>
+
       <button
         type="button"
         onClick={onCopy}
@@ -71,9 +71,19 @@ export function CopyAddress({ address }: { address: string }) {
       >
         复制地址
       </button>
-      <p role="status" aria-live="polite" className="mt-2 min-h-5 text-sm">
-        {state === "ok" && "已复制到剪贴板"}
-        {state === "fail" && "复制失败，请手动选择文字复制"}
+
+      {/* 反馈区：成功与失败都有可见文案，且可被读屏播报 */}
+      <p role="status" aria-live="polite" className="mt-2 min-h-10 text-sm">
+        {state === "ok" && (
+          <span className="inline-block border-2 border-border bg-brand-green px-2 py-1">
+            已复制到剪贴板
+          </span>
+        )}
+        {state === "manual" && (
+          <span className="inline-block border-2 border-border bg-brand-orange px-2 py-1">
+            自动复制不可用，已为你选中地址文字，请按 Ctrl/Cmd + C 复制
+          </span>
+        )}
       </p>
     </div>
   );

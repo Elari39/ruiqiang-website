@@ -87,6 +87,56 @@ export const TEL_HREF = `tel:${COMPANY.phone}`;
 export const MAIL_HREF = `mailto:${COMPANY.email}`;
 
 /**
+ * 注册地址的地理坐标。
+ *
+ * ⚠️ **坐标为空是刻意为之，不是遗漏。**
+ *
+ * 材料里没有经纬度，本项目也**不会**凭常识或估算填一个数字进来 ——
+ * 一个错误的地图标点比没有标点更糟：客户按错坐标导航到别处，
+ * 是实打实的误导（PRD §2 禁止编造事实）。
+ *
+ * 本机取证记录（2026-09-28）：公开地理编码服务在本沙箱均不可用 ——
+ *   - `nominatim.openstreetmap.org`：走系统代理返回 502，直连超时；
+ *   - `restapi.amap.com/v3/geocode/geo`：**端点可达**（返回 INVALID_USER_KEY），
+ *     但需要有效 AK，我没有，也不应替你申请。
+ * 结论：这一步需要在正常网络下用你自己的浏览器/AK 完成一次。
+ *
+ * 取到之后怎么填：
+ *   1. 把 `lat` / `lng` 换成实数值，并把 `source` 改成你实际用的服务名；
+ *   2. 把 `verified` 改成 true 之前，请先在官方地图上人工核对一次；
+ *   3. MapEmbed 会自动从"文字检索地图"切换为"坐标标记地图"，
+ *      无需改任何组件代码。
+ *
+ * 在坐标为空期间，`MAP_SEARCH_URL` 走的是**关键词检索**路线：
+ * 它把完整注册地址交给图商去解析，所以标点位置由地图服务保证，
+ * 不存在"我们标错了"的风险。
+ */
+export const GEO: {
+  lat: number | null;
+  lng: number | null;
+  source: string;
+  verified: boolean;
+} = {
+  lat: null,
+  lng: null,
+  source: "尚未取得（见上方说明）",
+  verified: false,
+};
+
+/** 是否已有可用坐标。MapEmbed 依据此值选择地图形态。 */
+export const HAS_GEO = GEO.lat !== null && GEO.lng !== null;
+
+/** 高德地图的**文字检索**外链：无需坐标，标点由图商解析 */
+export const MAP_SEARCH_URL =
+  "https://uri.amap.com/search?keyword=" +
+  encodeURIComponent(COMPANY.address) +
+  "&view=map&src=ruiqiang-site";
+
+/** 百度地图的检索外链，作为备选图商给用户第二选择 */
+export const MAP_SEARCH_URL_BAIDU =
+  "https://map.baidu.com/search/" + encodeURIComponent(COMPANY.address);
+
+/**
  * 公司简介 —— 改写自 [txt:13] 简介段落，仅调整为官网口吻，未新增任何事实。
  * 与 [txt:13] 的差异只在于语序与称呼，事实逐项对应。
  */

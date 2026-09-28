@@ -26,7 +26,52 @@ const VIEWPORTS = ["375", "768", "1440"];
 /** 五个页面（PRD §4） */
 const ROUTES = ["/", "/services", "/gallery", "/about", "/contact"];
 
-function loadJson(p: string, hint: string) {
+/** 探测报告里单条记录的形状（与 scripts/check-*.mjs 的产出对应） */
+type OverflowItem = {
+  tag: string;
+  cls: string;
+  left?: number;
+  right: number;
+  text: string;
+};
+
+type ClippedItem = {
+  tag: string;
+  cls: string;
+  scrollW: number;
+  clientW: number;
+  text: string;
+};
+
+type ResponsiveProbe = {
+  route: string;
+  iw: number;
+  sw: number;
+  hasHorizontalScroll: boolean;
+  overflowing: OverflowItem[];
+  overflowingCount: number;
+  clipped: ClippedItem[];
+  clippedCount: number;
+  fixedBottom: Array<{ tag: string; h: number; display: string }>;
+  docHeight: number;
+};
+
+type ResponsiveRecord = {
+  viewport: string;
+  viewportWidth: number;
+  route: string;
+  screenshot: string;
+  screenshotBytes: number;
+  probe: ResponsiveProbe;
+};
+
+type InteractionRecord = {
+  name: string;
+  pass: boolean;
+  detail: string;
+};
+
+function loadJson<T>(p: string, hint: string): T {
   if (!fs.existsSync(p)) {
     throw new Error(
       `缺少探测报告 ${path.relative(ROOT, p)}。请先运行：\n` +
@@ -35,11 +80,15 @@ function loadJson(p: string, hint: string) {
         `没有报告时本套件必须失败，不能跳过。`
     );
   }
-  return JSON.parse(fs.readFileSync(p, "utf8"));
+  return JSON.parse(fs.readFileSync(p, "utf8")) as T;
 }
 
 describe("三档宽度无横向滚动（PRD §5.3 / §7.3）", () => {
-  const data = () => loadJson(RESPONSIVE, "node scripts/check-responsive.mjs http://localhost:3000");
+  const data = () =>
+    loadJson<{ results: ResponsiveRecord[] }>(
+      RESPONSIVE,
+      "node scripts/check-responsive.mjs http://localhost:3000"
+    );
 
   it("报告覆盖 3 档 × 5 页 = 15 个组合", () => {
     const { results } = data();
@@ -121,7 +170,11 @@ describe("三档宽度无横向滚动（PRD §5.3 / §7.3）", () => {
 });
 
 describe("交互态验证（弹层 / 汉堡菜单 / 悬浮条遮挡）", () => {
-  const data = () => loadJson(INTERACTION, "node scripts/check-interactions.mjs http://localhost:3000");
+  const data = () =>
+    loadJson<{ results: InteractionRecord[] }>(
+      INTERACTION,
+      "node scripts/check-interactions.mjs http://localhost:3000"
+    );
 
   it("全部交互项通过", () => {
     const { results } = data();
