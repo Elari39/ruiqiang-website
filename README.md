@@ -27,11 +27,12 @@
 - **证件照永不发布。** 营业执照照含统一社会信用代码与法定代表人姓名。
   它不仅在 `public/` 下不存在，在构建管线的 `BLOCKED` 名单里被**显式拒绝并 `exit 2`**——
   即使有人把它塞进派生白名单，构建也会主动终止。
-- **154 条测试覆盖到「产物层」。** 不只测组件渲染，还测构建产物里的
+- **155 条测试覆盖到「产物层」。** 不只测组件渲染，还测构建产物里的
   `<img>` 是否真的带上了 `fetchpriority`、每个页面是否静态生成、
   `sitemap.xml` 里的 URL 是否是线上域名。
-- **零平台锁定。** 没有 `vercel.json` / `netlify.toml`，没有 `output: "export"`，
-  没有 Route Handler。Vercel 与 Netlify 都能直接部署，切换不改一行配置。
+- **源码层零平台锁定。** `next.config.ts` 保持默认空配置，没有 `output: "export"`，
+  没有 Route Handler，没有平台专属环境变量。仓库里只有一份 `netlify.toml`
+  声明 Next 运行时插件（增量配置，不绑定源码）——换平台只需增删这一个文件。
 
 ## 设计
 
@@ -109,30 +110,34 @@ npm run images           # webp + avif，各 1600/800 两档，单图 < 300 KB
 
 ## 部署
 
-零平台专属配置，两家平台都能直接接。
+线上地址：**https://ruiqiang-jianzhu.netlify.app**（Netlify + Git 集成）。
 
-**Vercel**
+源码层零平台专属配置，`next.config.ts` 是默认空配置。仓库里唯一与平台相关的
+文件是 `netlify.toml`，它声明 Next 运行时插件并设置响应头缓存策略：
 
-```bash
-npx vercel@latest link      # 项目名建议 ruiqiang-jianzhu
-npx vercel@latest --prod
+```toml
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
 ```
 
-**Netlify**
+接站只需把 GitHub 仓库连到 Netlify（需在浏览器完成 GitHub App 授权，
+这是 CLI/API 绕不过的一步），`netlify.toml` 会被自动读取。
 
-```bash
-npx netlify-cli@latest init
-npx netlify-cli@latest deploy --prod
-```
-
-> **不要**为了 Netlify 给 `next.config.ts` 加 `output: "export"`。那会连带关掉
-> `next/image` 的服务端优化并要求 `images.unoptimized: true`，属于为了备选平台
-> 削弱主路径。走 Netlify 的 Next.js 运行时（默认行为）即可。
+> **不要**给 `next.config.ts` 加 `output: "export"`。那会连带关掉 `next/image`
+> 的服务端优化并要求 `images.unoptimized: true`，等于牺牲图片体积换部署方式。
+> `tests/deploy.test.ts` 里有断言钉住这一点。
+>
+> ⚠️ 本机 `netlify deploy --build` 会撞上沙箱的 safe-delete 守卫，**不要用**。
+> Next.js 项目走 Git 集成（云端构建）才是正路。
 
 ### 唯一的部署环境变量
 
 ```bash
-NEXT_PUBLIC_SITE_URL=https://your-domain.example   # 末尾不要带 /
+NEXT_PUBLIC_SITE_URL=https://ruiqiang-jianzhu.netlify.app   # 末尾不要带 /
 ```
 
 不设它，`sitemap.xml` 和分享卡片里会写 `localhost:3000`。
@@ -148,7 +153,7 @@ NEXT_PUBLIC_SITE_URL=https://your-domain.example   # 末尾不要带 /
 | [`PRD.md`](./PRD.md) | 产品需求，含合规硬约束与素材清单 |
 | [`DEVELOPMENT_PLAN.md`](./DEVELOPMENT_PLAN.md) | A0–A8 开发计划与每阶段出口判据 |
 | [`TASKS.md`](./TASKS.md) | 任务清单与逐项验收记录 |
-| [`DEPLOY.md`](./DEPLOY.md) | Vercel / Netlify 部署手册与故障排查 |
+| [`DEPLOY.md`](./DEPLOY.md) | Netlify 部署手册与故障排查 |
 | [`PLACEHOLDERS.md`](./PLACEHOLDERS.md) | 待替换值台账、不进库文件清单、规格偏差记录 |
 
 ## 已知边界

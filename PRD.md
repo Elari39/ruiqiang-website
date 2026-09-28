@@ -71,20 +71,20 @@
 
 | 层 | 选型 | 版本 | 理由 |
 |---|---|---|---|
-| 框架 | Next.js（App Router） | 16.3.6 | 每页静态生成；SEO 与社交分享卡片正常；与 Vercel 天然配套 |
+| 框架 | Next.js（App Router） | 16.3.6 | 每页静态生成；SEO 与社交分享卡片正常；与主流托管平台天然配套 |
 | UI 库 | React | 19.3.0 | 用户指定 |
 | 语言 | TypeScript | 随脚手架 | 用户指定 |
 | 样式 | Tailwind CSS | 4.3.3 | 用户指定 |
 | 组件风格 | neobrutalism 注册表（shadcn CLI 拉取源码） | shadcn 4.21.0 | 用户指定；源码落库、无运行时依赖、可自由改 |
 | 组件变体 | **Radix 变体**（`/r/radix/`） | — | 生态成熟、可访问性支持完善 |
 | 字体 | next/font 自托管：Archivo Black + Space Grotesk + Noto Sans SC | — | 见 §5.2 |
-| 部署 | Vercel（无自有域名，用 `*.vercel.app`） | CLI 60.1.3 | 用户指定 |
+| 部署 | ~~Vercel~~ → **Netlify**（无自有域名，用 `*.netlify.app`） | Netlify + `@netlify/plugin-nextjs` | 原定 Vercel，后改单平台；见 §9 |
 
 ### 3.1 关键决策记录：为什么剔除 Vite 8
 
 原始需求同时列出 Next.js 与 Vite 8。二者互斥：Next.js 自带打包器（Turbopack/webpack），无法在其之上套用 Vite；Vite 是纯前端 SPA 构建工具，使用它即不需要 Next.js。
 
-**已确认采用 Next.js，Vite 8 从技术栈中移除。** 理由：用户明确指定 Vercel 作为部署平台；官网的主要流量来源是"搜索引擎命中"与"微信/QQ 分享链接打开"，需要每页独立的 HTML、标题与分享摘要，这是 SPA 无法提供的。
+**已确认采用 Next.js，Vite 8 从技术栈中移除。** 理由：官网的主要流量来源是"搜索引擎命中"与"微信/QQ 分享链接打开"，需要每页独立的 HTML、标题与分享摘要，这是 SPA 无法提供的。
 
 ### 3.2 授权合规
 
@@ -168,7 +168,7 @@ neobrutalism 默认字体为 Archivo Black（标题）与 Space Grotesk（正文
 ## 6. 第一版范围
 
 ### 6.1 做
-5 个静态页面；neobrutalism 主题与组件接入；中英双字体方案；6 张图的响应式相册；联系电话与邮箱的可点击链接；在线地图；移动端悬浮致电条；每页独立标题与描述；`sitemap.xml`、`robots.txt`；Open Graph 分享卡片；`LocalBusiness` 结构化数据；图片优化（WebP/AVIF）；Vercel 部署上线。
+5 个静态页面；neobrutalism 主题与组件接入；中英双字体方案；6 张图的响应式相册；联系电话与邮箱的可点击链接；在线地图；移动端悬浮致电条；每页独立标题与描述；`sitemap.xml`、`robots.txt`；Open Graph 分享卡片；`LocalBusiness` 结构化数据；图片优化（WebP/AVIF）；部署上线（Netlify）。
 
 ### 6.2 不做（含理由）
 
@@ -214,11 +214,22 @@ neobrutalism 默认字体为 Archivo Black（标题）与 Space Grotesk（正文
 
 ## 9. 部署方案
 
+> **⚠️ 本节已被后续决策取代（2026-09-28）**：原方案指定 Vercel。
+> 实际执行时先按此部署到 `ruiqiang-jianzhu.vercel.app`，随后用户要求
+> **只保留 Netlify 单平台**，Vercel 项目已彻底删除。
+> **当前线上地址：`https://ruiqiang-jianzhu.netlify.app`。**
+> 详见 `VERIFY_DEPLOY.md` §3.4 与 `PLACEHOLDERS.md` §8。
+> 下方原文保留，作为需求演进的记录。
+
 - **平台**：Vercel
 - **域名**：**无自有域名**，采用平台自动分配的 `https://<project>.vercel.app`
 - **流程**：本地安装 Vercel CLI（60.1.3）→ `vercel login` 完成账号授权（此步需用户本人配合交互）→ `vercel --prod` 部署 → 回读线上 URL 并验证可访问
 - **认证边界**：不代用户创建账号、不索取密码；登录授权由用户本人完成
 - **备案说明**：Vercel 为境外托管，**无需 ICP 备案**；代价是国内访问速度一般，页脚已预留备案号占位以便将来迁移
+
+> **部署层的实际结论**：无论落在哪家平台（Vercel / Netlify），都是**境外托管、
+> 国内访问偏慢**，换平台不解决速度问题。真正提速需要 ICP 备案 + 国内云托管。
+> 用户已选择接受现状。源码侧零平台锁定，切换平台不需要改一行源码。
 
 ---
 
@@ -230,7 +241,7 @@ neobrutalism 默认字体为 Archivo Black（标题）与 Space Grotesk（正文
 | 2 | neobrutalism 默认字体无汉字 | 中英双字体配对方案（§5.2） |
 | 3 | 营业执照含敏感信息 | 只做文字摘要，不放照片原件（用户已确认） |
 | 4 | 境外托管、无备案 | 明确告知国内访问速度一般；预留备案占位 |
-| 5 | `vercel login` 需要交互 | 在该步骤暂停，请用户完成授权后继续 |
+| 5 | 平台授权需要交互 | 在该步骤暂停，由用户完成浏览器授权后继续 |
 | 6 | 材料缺资质与业绩 | 列入 §8 待补清单，不编造、不渲染空模块 |
 | 7 | 分享卡片若需中文 | 采用纯色块 + 重边框 + 文字排版生成，规避中文字体体积问题 |
 
@@ -241,4 +252,4 @@ neobrutalism 默认字体为 Archivo Black（标题）与 Space Grotesk（正文
 1. 本 `PRD.md`（开发依据）
 2. 完整可运行的 Next.js 项目源码
 3. 本地构建与类型检查通过的验证记录
-4. 线上访问地址 `https://<project>.vercel.app`
+4. 线上访问地址 `https://ruiqiang-jianzhu.netlify.app`

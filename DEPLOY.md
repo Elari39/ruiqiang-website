@@ -1,7 +1,8 @@
-# 部署手册 · Vercel（主路径）与 Netlify（备选）
+# 部署手册 · Netlify（当前路径）
 
-> 依据：`PRD.md` §9（Vercel 指定、无自有域名、`*.vercel.app`）＋ 本次需求（需支持 Netlify 或 Vercel）
-> 结论：**A0–A7 的产物本身对两家平台同时成立**，唯一实质差异在 `next/image` 的优化方式，见 §3。
+> 依据：`PRD.md` §9 原指定 Vercel，但按用户 2026-09-28 的要求
+> **只保留 Netlify**，Vercel 项目已彻底删除（见 `VERIFY_DEPLOY.md` §3.4）。
+> 结论：**A0–A7 的产物对可托管的平台同时成立**，唯一实质差异在 `next/image` 的优化方式，见 §3。
 
 ---
 
@@ -9,72 +10,51 @@
 
 | 方式 | 适用场景 | 优点 | 代价 |
 |---|---|---|---|
-| **CLI 直传**（本计划默认） | 无 GitHub 仓库 / 想快速上线 | 最少前置依赖 | 无 Git 集成，后续改动需手动重传 |
-| **Git 仓库集成** | 长远维护（推荐长期） | push 即自动部署、有预览环境 | 需先把仓库推到 GitHub/GitLab |
+| **Git 仓库集成**（当前所用，推荐） | 长期维护 | push 即自动部署、有预览环境 | 需先把仓库推到 GitHub（已完成） |
+| CLI 直传 | 无仓库 / 想快速上线 | 最少前置依赖 | 无 Git 集成，后续改动需手动重传 |
 
-> 本计划默认走 **CLI 直传**，因为当前项目**尚未 `git init`**、也无远端仓库。若你已把仓库托管到 GitHub，改用 Git 集成更省事，只需在平台上选仓库、Framework 选 Next.js、构建命令与输出目录留空即可。
+> ⚠️ **本机不要用 `netlify deploy --build`**：它会在本机跑 `npm run build`，
+> 撞上本机沙箱的 safe-delete 守卫（`.next/turbopack` 递归删除被拦），必然失败。
+> **对 Next.js 应用，Netlify 的正确路径只能是 Git 集成（云端构建）。**
 
 ---
 
-## 1. Vercel（主路径）
+## 1. Netlify（当前路径）
 
-### 1.1 前置
+### 1.0 站点现状
 
-```bash
-# 用全路径 git（本机 bash 的 git 是坏 shim）
-"/c/Program Files/Git/cmd/git.exe" add -A
-"/c/Program Files/Git/cmd/git.exe" diff --cached --stat      # ← 必看，确认没有误提交
-"/c/Program Files/Git/cmd/git.exe" commit -m "chore: 上线前收口"
-```
+| 项 | 值 |
+|---|---|
+| 站点名 | `ruiqiang-jianzhu` |
+| site id | `20b3c4a5-0258-4453-85fc-ee9c75b8ceda` |
+| 生产域名 | `https://ruiqiang-jianzhu.netlify.app` |
+| 仓库 | `https://github.com/Elari39/ruiqiang-website`，分支 `main` |
+| 构建命令 / 发布目录 | `npm run build` / `.next`（由 `netlify.toml` 声明） |
 
-### 1.2 登录（**交互步骤，必须由你本人完成**）
+### 1.1 首次接站的唯一前置：GitHub App 授权
 
-```bash
-npx vercel@60.1.3 login
-```
+**这是浏览器交互，CLI 与 API 都绕不过**（当时正是卡在这里导致
+云端构建报 `Host key verification failed`）：
 
-- 会打印一个验证链接与设备码，**你在浏览器里完成授权**。
-- 凭据由 CLI 自己写入 `~/.vercel`（或系统凭据管理器）。**我不代登录、不索取账号密码、不索取 token。**
-- 认证边界（PRD §9）：不代用户创建账号。
+1. 打开 https://github.com/apps/netlify/installations/new
+2. 选择 **Only select repositories** → 勾选 `Elari39/ruiqiang-website` → Install
+3. 回到 https://app.netlify.com/projects/ruiqiang-jianzhu/configuration/deploys
+   确认：Repository = `Elari39/ruiqiang-website`，Branch = `main`，
+   Build command = `npm run build`，Publish directory = `.next`
 
-### 1.3 绑定项目 —— **此处暂停确认**
+完成后 push 任意提交即会自动部署，或在该页面点 **Trigger deploy**。
 
-```bash
-npx vercel@60.1.3 link
-```
-
-CLI 会问：
-- `Set up and deploy?` → **Y**
-- `Which scope?` → 选择你的账号 / team
-- `Link to existing project?` → **N**
-- `What's your project's name?` → **建议 `ruiqiang-jianzhu`**
-- `In which directory is your code located?` → `./`
-- `Want to modify these settings?` → **N**（Next.js 会被自动识别）
-
-> ⚠️ **项目名决定最终地址 `https://<project>.vercel.app`。部署后再改项目名会更换 URL**，届时 `NEXT_PUBLIC_SITE_URL`、sitemap、OG 全部要跟着改，所以这里先确认好再回车。
-> **请在此暂停**，把 scope 与项目名告诉我确认后再继续。
-
-### 1.4 生产部署
+### 1.2 部署后必须做的一件事
 
 ```bash
-npx vercel@60.1.3 --prod
+# 在 Netlify 控制台 → Site configuration → Environment variables 设置：
+#   NEXT_PUBLIC_SITE_URL = https://ruiqiang-jianzhu.netlify.app
+# 然后重新部署（Deploys → Trigger deploy → Clear cache and deploy site）
 ```
 
-成功后会打印形如 `https://ruiqiang-jianzhu.vercel.app` 的 Production URL。
+否则 `sitemap.xml` / OG 卡片里仍是 `localhost:3000`。
 
-### 1.5 部署后必须做的一件事
-
-```bash
-# 1) 把 URL 写进两处台账
-#    PLACEHOLDERS.md §1
-#    TASKS.md → A8 验证输出
-# 2) 设置环境变量并重新部署（否则 sitemap / OG 里仍是 localhost:3000）
-npx vercel@60.1.3 env add NEXT_PUBLIC_SITE_URL production
-#    粘贴 https://ruiqiang-jianzhu.vercel.app
-npx vercel@60.1.3 --prod
-```
-
-### 1.6 上线验证（PRD §7.8）
+### 1.3 上线验证（PRD §7.8）
 
 | 检查 | 方法 | 期望 |
 |---|---|---|
@@ -89,25 +69,30 @@ npx vercel@60.1.3 --prod
 
 ---
 
-## 2. Netlify（备选路径）
+## 2. 走法对照与备选方案
 
 ### 2.1 可行性结论
 
-A0–A7 的产物是 **纯静态、零运行时函数、不依赖 `vercel.json`**，所以 Netlify 可以承接。两条走法：
+A0–A7 的产物是 **纯静态、零运行时函数、不依赖任何平台专属配置**，所以
+Netlify 可以承接（当前已在用），任何支持 Next.js 的平台也都能承接。两条走法：
 
-#### 走法 A（推荐）：交给 Netlify 的 Next.js 运行时
+#### 走法 A（当前所用，推荐）：交给 Netlify 的 Next.js 运行时
 
-```bash
-npx netlify-cli@latest login     # 交互，由你本人完成授权
-npx netlify-cli@latest init      # 关联/新建站点
-npx netlify-cli@latest deploy --prod
+由仓库内 `netlify.toml` 声明，**不需要手工执行任何 CLI 命令**：
+
+```toml
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
 ```
 
 - 不改 `next.config.ts`，`next/image` 的优化由 Netlify 的 Next 运行时插件接管。
-- 需要在站点设置里安装/启用 Next.js runtime（`init` 时 CLI 一般会提示）。
-- **优点**：与 Vercel 行为最接近，改动最少。
+- **优点**：改动最少，保留了 `next/image` 的服务端优化能力。
 
-#### 走法 B：纯静态导出
+#### 走法 B（不推荐）：纯静态导出
 
 在 `next.config.ts` 加：
 
@@ -118,47 +103,28 @@ const nextConfig = {
 };
 ```
 
-然后：
-
-```bash
-npm run build                    # 产出 out/
-npx netlify-cli@latest deploy --prod --dir=out
-```
-
 > ⚠️ **两处联动，缺一必错**：
 > 1. 设了 `output:"export"` 后，`next/image` 默认依赖的**运行时图片优化服务不存在了**，必须同时设 `images.unoptimized: true`，否则构建直接报错。
 > 2. `output:"export"` 不支持 Route Handler / 动态函数。本项目**本来就没有**（纯静态），所以安全——但如果将来加了 `/api/og` 之类的边缘函数（见 D3），这条路会断。
-
-### 2.2 Netlify 也可以直接托管静态资源
-
-若你只想把 `out/` 当普通静态站扔上去，Netlify 的 `netlify.toml` 最小配置：
-
-```toml
-[build]
-  command = "npm run build"
-  publish = "out"
-
-[[headers]]
-  for = "/*"
-  [headers.values]
-    X-Content-Type-Options = "nosniff"
-    Referrer-Policy = "strict-origin-when-cross-origin"
-```
+>
+> **本项目不采用走法 B**：它为了让产物能当普通静态文件搬走，牺牲了图片优化，
+> 而 PRD §7.5 明确要求「图片体积显著低于原图」。走法 A 没有这个代价。
+> `tests/deploy.test.ts` 里有断言钉住这一点，改用走法 B 会让测试变红。
 
 ---
 
-## 3. 两家平台的差异对照（本项目相关）
+## 3. 平台差异对照（本项目相关）
 
-| 维度 | Vercel | Netlify |
+| 维度 | Netlify（当前所用） | Vercel（已下线） |
 |---|---|---|
-| Next.js 支持 | 原生、零配置 | 需 Next 运行时插件（走法 A）或静态导出（走法 B） |
-| `next/image` 优化 | 开箱即用（运行时） | 走法 A 等同；走法 B 必须 `unoptimized: true` |
-| 配置文件 | `vercel.json`（本项目**不需要**） | `netlify.toml`（本项目**已加入**，见下） |
-| 国内访问速度 | **慢**（无中国大陆节点，跨境链路。首字节常 1–3s，晚高峰更差） | **同样慢**（也没有中国大陆节点，与 Vercel 同一类问题） |
+| Next.js 支持 | 需 Next 运行时插件（`netlify.toml` 已声明） | 原生、零配置 |
+| `next/image` 优化 | 走法 A 等同原生 | 开箱即用（运行时） |
+| 配置文件 | `netlify.toml`（本项目**已加入**） | `vercel.json`（本项目**不需要**） |
+| 国内访问速度 | **慢**（无中国大陆节点，跨境链路。首字节常 1–3s，晚高峰更差） | **同样慢**（也没有中国大陆节点，与 Netlify 同一类问题） |
 | ICP 备案 | 无需（境外托管） | 无需（境外托管） |
 | 自动 HTTPS | ✅ | ✅ |
 | 免费档是否够用 | 够（纯静态站） | 够 |
-| 无自有域名 | 自动分配 `*.vercel.app` | 自动分配 `*.netlify.app` |
+| 无自有域名 | 自动分配 `*.netlify.app` | 自动分配 `*.vercel.app` |
 
 > **关于国内速度，先把一个常见误解说清楚（2026-09-28 补充）**：
 > **换平台解决不了速度问题。** Vercel 与 Netlify 都没有中国大陆节点，
@@ -167,10 +133,13 @@ npx netlify-cli@latest deploy --prod --dir=out
 > **域名在中国大陆完成 ICP 备案 + 国内云托管（阿里云 / 腾讯云 OSS + CDN）**，
 > 但那就绕不开备案与企业主体资料，与 PRD §9「无自有域名」的前提冲突。
 >
-> 所以本项目的双平台部署（Vercel + Netlify）定位是**平台冗余与多入口**，
-> 不是提速手段。用户已明确选择「接受现状，先不折腾」。
+> 用户已明确选择「接受现状，先不折腾」——**保留 Netlify 单平台即可**，
+> 不要再为提速而反复换平台。
 
-> **对本项目的结论**：PRD 指定 Vercel，且 Vercel 对 Next 16 的支持路径最短，**优先 Vercel**。Netlify 作为等效备选，切换成本约 10 分钟（走法 A）。**两者都不要设 `output:"export"`，除非你确实需要把构建产物当静态文件搬走。**
+> **对本项目的结论**：当前部署在 Netlify（`https://ruiqiang-jianzhu.netlify.app`）。
+> 由于源码侧零平台锁定，将来若需迁回 Vercel 或其他平台，
+> 只需接好 Git 集成、删掉 `netlify.toml` 即可，源码一行不用改。
+> **无论哪个平台，都不要设 `output:"export"`，除非确实需要把构建产物当静态文件搬走。**
 
 ---
 
@@ -183,6 +152,8 @@ npx netlify-cli@latest deploy --prod --dir=out
 | 图片全 404 | 派生品未进 `public/images/`，或走了 `output:"export"` 却没设 `unoptimized` | 重跑 `scripts/build-images.mjs`；核对 §2.1 走法 B 的两处联动 |
 | 地图位置不对 | 坐标来自自动地理编码且未实地核验 | A6 手动在浏览器地图核对一次；文案不得写"精确到门牌" |
 | 分享到微信没有封面图 | `og:image` 是相对路径 / 指向本地 | 确认 `NEXT_PUBLIC_SITE_URL` 已设为线上域名并**重新部署** |
-| `/sitemap.xml` 里全是 localhost | 同上 | 设置 `NEXT_PUBLIC_SITE_URL` → 重新部署 |
-| 本机 `npx vercel` 卡住无输出 | 系统代理 | 本机配了系统代理；必要时设 `NO_PROXY` 或临时关代理 |
-| `vercel login` 一直等 | 交互式命令在无 TTY 环境 | **必须**由你在自己的终端里跑，不要在自动化环境里跑 |
+| `/sitemap.xml` 里全是 localhost | 同上 | 设置 `NEXT_PUBLIC_SITE_URL` → **Clear cache and deploy** |
+| Netlify 云端构建报 `Host key verification failed` | 缺 GitHub App 授权（无 SSH 部署密钥） | 走 §1.1 的浏览器授权流程，这是唯一可行路径 |
+| 本机 `netlify deploy --build` 报 safe-delete 拦截 | 本机沙箱守卫拦了 `.next/turbopack` 递归删除 | **不要在本地构建后直传**，走 Git 集成让 Netlify 云端构建 |
+| 本机 `npx` 命令卡住无输出 | 系统代理 | 本机配了系统代理；必要时设 `NO_PROXY` 或临时关代理 |
+| `netlify login` 一直等 | 交互式命令在无 TTY 环境 | **必须**由你在自己的终端里跑，不要在自动化环境里跑 |

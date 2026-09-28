@@ -12,7 +12,7 @@
 - [ ] **D2** 地图路线确认 —— 默认「静态地图 + 外链官方地图」；若要交互地图需提供高德 AK
 - [ ] **D3** OG 卡片方案确认 —— 默认用工程实拍图（保住"全静态"），不做中文自绘卡片
 - [ ] **§6 冲突裁决** —— 默认「公开 5 张（门头 1 + 实拍 4），营业执照照零引用」，记录为对 PRD §7.5 的显式偏差
-- [ ] 项目名确认 —— 建议 `ruiqiang-jianzhu`（决定最终 `*.vercel.app` 地址）
+- [ ] 项目名确认 —— 建议 `ruiqiang-jianzhu`（决定最终的 `*.netlify.app` 地址）
 
 ---
 
@@ -153,13 +153,13 @@
 ## M3 · A8 部署
 
 - [x] A8.1 上线前最后一次提交（`git diff --cached --stat` 过一遍）
-- [ ] A8.2 `npx vercel@latest login` —— **由你本人完成授权**
-- [ ] A8.3 暂停确认：scope/team 与项目名（决定最终 URL）
-- [ ] A8.4 `npx vercel@latest link`
-- [ ] A8.5 `npx vercel@latest --prod`
-- [ ] A8.6 回读线上 URL → 写入 `PLACEHOLDERS.md` → 同步设置 `NEXT_PUBLIC_SITE_URL` → **再提交一次**
-- [ ] A8.7 无痕窗口 + 手机网络验证 5 条路由与联系方式
-- [x] A8.8 （备选）Netlify 路径：已确认**不需要任何配置改动**即可承接
+- [x] A8.2 Netlify 授权 —— **由用户本人完成**（GitHub App 浏览器授权）
+- [x] A8.3 暂停确认：站点名 `ruiqiang-jianzhu`（决定最终 URL）
+- [x] A8.4 仓库接入 Netlify Git 集成 + `netlify.toml` 声明 Next 运行时插件
+- [x] A8.5 站点上线：`https://ruiqiang-jianzhu.netlify.app`
+- [x] A8.6 回读线上 URL → 写入 `PLACEHOLDERS.md` → 设置 `NEXT_PUBLIC_SITE_URL`
+- [ ] A8.7 无痕窗口 + 手机网络验证 5 条路由与联系方式（需真实设备）
+- [x] A8.8 Vercel 路径按要求废弃：项目已 `vercel remove` 彻底删除，域名返回 404
 
 **A8 构建侧验证（已完成，无需账号）**
 
@@ -169,7 +169,7 @@
 | 路由渲染模式 | 8 条全 `○ (Static)`，**零 `ƒ (Dynamic)`** |
 | 是否存在 `vercel.json` | **否**（无平台锁定） |
 | 是否存在 `output:"export"` | **否**（`next/image` 优化保留） |
-| `app/` 下 Route Handler 数量 | **0**（无 API 路由，两家免费档均够用） |
+| `app/` 下 Route Handler 数量 | **0**（无 API 路由，免费档够用） |
 | 源码引用平台专属环境变量 | **0**（只有 `NEXT_PUBLIC_SITE_URL`） |
 | 营业执照照是否进入 `public/` | **否** |
 | `public/` 下 >400 KB 的图片 | **0** |
@@ -180,8 +180,8 @@
 - 详细报告见 `VERIFY_DEPLOY.md`。
 
 **验证输出**
-- 线上 URL：____（待 A8.2–A8.5 完成后回填）
-- 无痕窗口验证结果：____
+- 线上 URL：`https://ruiqiang-jianzhu.netlify.app`（7 个端点全部 200）
+- 无痕窗口验证结果：____（待人工完成）
 
 ---
 

@@ -1,7 +1,8 @@
-# Netlify 备选路径的配置。
+# Netlify 部署配置（当前唯一部署目标：ruiqiang-jianzhu.netlify.app）。
 #
-# Vercel 主路径不需要任何对应文件（见 VERIFY_DEPLOY.md 的平台对照表），
-# 且 next.config.ts 保持默认空配置 —— 两家平台共用同一份代码，切换不改一行源码。
+# 这份文件是**增量**的：只对 Netlify 生效，其他平台完全忽略它。
+# next.config.ts 保持默认空配置 —— 源码侧零平台锁定，
+# 换平台时增删这一个文件即可，不需要改任何源码。
 #
 # 走法 A（Netlify 的 Next.js 运行时）就是下面这个 plugin。
 # 走法 B（output:"export" 纯静态导出）才不需要它，但那会连带关掉 next/image
@@ -14,11 +15,11 @@
 # 必须显式声明这个插件。
 # 只写 publish = ".next" 而不装插件时，Netlify 会把 .next 当成纯静态目录直传，
 # 结果是 _next/static 之外的东西（App Router 路由分发、next/image 优化端点、
-# 服务端产物）全部失效。插件会接管这两件事，行为与 Vercel 最接近。
+# 服务端产物）全部失效。插件会接管这两件事，行为与官方 Next 托管最接近。
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
-# 安全响应头。两家平台都可加，这里对 Netlify 显式声明。
+# 安全响应头。
 # 注意：不要在 next.config.ts 里重复配置 headers，否则两边口径会漂移。
 [[headers]]
   for = "/*"

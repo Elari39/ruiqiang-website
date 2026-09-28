@@ -2,7 +2,7 @@
 
 > 版本：v1.0
 > 依据：`PRD.md` v1.0
-> 部署目标：**Vercel 为首选**（PRD 指定），**Netlify 为等效备选**（本计划的部署层设计对两者同时成立）
+> 部署目标：**Netlify**（最终采用；PRD §9 原指定 Vercel，后按用户要求改单平台部署，见 `VERIFY_DEPLOY.md` §3.4）
 > 计划性质：可直接执行 —— 每个任务都给出目标路径、关键内容、验证命令
 > 日期：2026-09-28
 
@@ -38,7 +38,7 @@ PRD §5.2 要求"中英双字体配对"并自托管，但未指定字重文件�
 
 | 路线 | 成本 | 风险 |
 |---|---|---|
-| **A. 高德/百度 JS SDK 嵌入** | 需申请并持有 AK 密钥 | 站点是纯静态、无后端，密钥必然打在客户端包里。高德 JS API 的 AK 必须配**域名白名单**；PRD §9 承诺无自有域名、用 `*.vercel.app`，**白名单需填 `*.vercel.app`，高德控制台对通配符的支持并不稳定**。密钥泄露或配置错会显示"地图加载失败"灰块 |
+| **A. 高德/百度 JS SDK 嵌入** | 需申请并持有 AK 密钥 | 站点是纯静态、无后端，密钥必然打在客户端包里。高德 JS API 的 AK 必须配**域名白名单**；PRD §9 承诺无自有域名、用平台自动分配的子域，**白名单需填通配符，高德控制台对通配符的支持并不稳定**。密钥泄露或配置错会显示"地图加载失败"灰块 |
 | **B. 静态地图图片 + 外链图商官方地图页**（推荐） | 零配置、零密钥、零配额 | 无交互拖拽；但本场景"找过来"的需求用不到拖拽 |
 
 **本计划采用 B 路线**作为 A6 的默认实现，并把它写成"可被用户一键替换成 A 路线"的结构：`components/MapEmbed.tsx` 中保留一个被注释的 `// SDK-MODE` 分支，将来要切交互地图只改这一个文件。
@@ -111,7 +111,7 @@ img/_orig_not_published/storefront.jpg        236,164 B  门头照（复用图�
 | 1 | `DEVELOPMENT_PLAN.md` | 本文件，可执行开发计划 |
 | 2 | `TASKS.md` | 逐任务清单，含验收命令与勾选框（**日常执行看这份**） |
 | 3 | `PLACEHOLDERS.md` | 待替换值台账（部署 URL、地图坐标、备案号等） |
-| 4 | `DEPLOY.md` | Vercel 主路径 + Netlify 备选路径操作手册 |
+| 4 | `DEPLOY.md` | Netlify 部署手册（含废弃的备选走法对照） |
 | 5 | 完整 Next.js 源码 | A0–A8 产出 |
 | 6 | 线上 `https://` 地址 | A8 产出 |
 
@@ -356,7 +356,7 @@ npx tsc --noEmit     # 退出码 0
   - 汉堡菜单用 Radix Dialog 或自写 `useState` 均可；**关闭后焦点必须回到触发按钮**（可访问性）。
 - `components/SiteFooter.tsx`：工商信息摘要 + 版权 + **ICP 备案号注释占位**：
   ```tsx
-  {/* TODO(§4.6/§5.4): ICP 备案号占位。当前使用 Vercel 境外托管，无需备案；若迁移国内主机，在此填入 渝ICP备xxxxxxxx号 并链接 https://beian.miit.gov.cn */}
+  {/* TODO(§4.6/§5.4): ICP 备案号占位。当前使用 Netlify 境外托管，无需备案；若迁移国内主机，在此填入 渝ICP备xxxxxxxx号 并链接 https://beian.miit.gov.cn */}
   ```
 - `components/MobileCallBar.tsx`：手机端底部悬浮「立即致电」。
   - **实现要点**：`fixed bottom-0` + `md:hidden`（PRD 只在手机端要求）；高度约 56–64px；**必须在 `app/layout.tsx` 的 `<main>` 上预留等量 `pb`**，否则页面底部内容会被永久遮住（这是这类悬浮条最常见的真实缺陷）。
@@ -432,9 +432,12 @@ npx tsc --noEmit     # 退出码 0
 
 ---
 
-### A8 · 部署（Vercel 主路径 / Netlify 备选）
+### A8 · 部署（Netlify）
 
 > 详细操作手册见 `DEPLOY.md`。此处为执行摘要与决策点。
+>
+> **执行结果（2026-09-28）**：站点已上线 `https://ruiqiang-jianzhu.netlify.app`。
+> 原计划的 Vercel 主路径已废弃（项目被彻底删除），净化为 Netlify 单平台部署。
 
 **共同前置**
 ```bash
@@ -442,26 +445,21 @@ git add -A && git commit -m "chore: 上线前收口"
 ```
 （用全路径 `git`）
 
-**路径一：Vercel（PRD §9 指定）**
-```bash
-npx vercel@60.1.3 login     # ← 交互步骤，必须由你本人完成，我不代登录、不索取密码
-npx vercel@60.1.3 link
-npx vercel@60.1.3 --prod
-```
-- `login` 后 CLI 会写 `~/.vercel`，**不需要**把 token 交给任何人。
-- **待你确认项**：`login` 与本项目 `link` 之间建议暂停一次，由你确认要绑定的 scope/team 与项目名（项目名会决定 `<project>.vercel.app` 的最终地址，**一旦部署后再改名会换 URL**，PRD §9 未规定项目名，本计划建议用 `ruiqiang-jianzhu`）。
-- 部署后：把回读到的 URL 写进 `PLACEHOLDERS.md`，然后**再提交一次**。
+**实际路径：Netlify Git 集成**
 
-**路径二：Netlify（等效备选，本项目不需要任何额外配置）**
+仓库内 `netlify.toml` 声明走法 A（Next.js 运行时插件），接站步骤：
 
-由于 A0–A7 产出的站点是**纯静态、无运行时函数、无 `vercel.json` 依赖**，Netlify 可直接承接：
-```bash
-npx netlify-cli@latest deploy --prod --dir=out
-```
-- 需先在 `next.config.ts` 设 `output: "export"`（纯静态导出）—— **注意**：一旦设了 `output:"export"`，`next/image` 的默认优化服务（运行时）会失效，需改 `images: { unoptimized: true }`，或保留默认写法并走 Netlify 的 Next 运行时插件。**这是 Netlify 与 Vercel 在本项目上唯一的实质差异**，详见 `DEPLOY.md`。
-- 备选交互路径：`netlify-cli login` → `netlify-cli init` → `netlify-cli deploy --prod`，同样由你本人授权。
+1. 浏览器完成 GitHub App 授权（https://github.com/apps/netlify/installations/new），
+   勾选 `Elari39/ruiqiang-website` —— **这一步 CLI 与 API 都绕不过**；
+2. Netlify 读 `netlify.toml` 自动构建（`npm run build` → publish `.next`）；
+3. 控制台设置 `NEXT_PUBLIC_SITE_URL` 并触发重新部署。
 
-**A8 出口判据**：线上 `https://` 地址在**无痕窗口 + 手机网络**下均打开正常，5 条路由可达，联系方式可点。
+**不要**为了部署方式给 `next.config.ts` 加 `output: "export"`：
+它会让 `next/image` 的服务端优化失效并要求 `images.unoptimized: true`，
+等于拿图片体积换部署方式，得不偿失。走法 A 没有这个代价。
+
+**A8 出口判据**：线上 `https://` 地址在**无痕窗口 + 手机网络**下均打开正常，
+5 条路由可达，联系方式可点。（构建侧已全部自动验证通过，见 `VERIFY_DEPLOY.md`。）
 
 ---
 
@@ -515,8 +513,8 @@ npx netlify-cli@latest deploy --prod --dir=out
 | 8 | 误发布营业执照照或原始大图 | 低 | **极高** | A2 白名单式管线 + 显式拒绝 + `_orig_not_published/` 隔离 + `public/` 全盘体积扫描（四重） |
 | 9 | 悬浮致电条遮住页面底部内容 | 高 | 低 | A4 要求 `<main>` 预留等量 `pb`；A5 截图中专门目视底部 |
 | 10 | 文案不知不觉写出无出处的事实 | 中 | **高（虚假宣传）** | A4 的"逐句回溯"自查；`lib/company.ts` 用类型系统的"无字段"堵死后路 |
-| 11 | `vercel login` 交互步骤阻塞 | 高 | 低 | A8 明确暂停点，由你本人授权；不代登录、不索取密码 |
-| 12 | Vercel 改动后需重部署，忘记改 `SITE_URL` | 中 | 低 | `SITE_URL` 单点环境变量；`PLACEHOLDERS.md` 台账 |
+| 11 | 平台授权交互步骤阻塞 | 高 | 低 | A8 明确暂停点，由用户本人授权；不代登录、不索取密码 |
+| 12 | 部署后忘记改 `SITE_URL` | 中 | 低 | `SITE_URL` 单点环境变量；`PLACEHOLDERS.md` 台账 |
 | 13 | 本机 bash 缺 coreutils 导致验证命令静默失败 | **确定为真** | 中 | 全计划验证命令一律走绝对路径 Python / PowerShell；输出重定向到文件再 Read |
 
 ---

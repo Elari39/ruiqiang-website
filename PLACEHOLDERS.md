@@ -9,10 +9,10 @@
 
 | 项 | 代码位置 | 当前值 | 取得后填入 | 状态 |
 |---|---|---|---|---|
-| 站点绝对 URL | `lib/site.ts` → `SITE_URL`；环境变量 `NEXT_PUBLIC_SITE_URL` | `http://localhost:3000` | 线上已设为 `https://ruiqiang-jianzhu.vercel.app` | ✅ 已取得 |
-| 线上地址 | `DEVELOPMENT_PLAN.md` / `TASKS.md` 验证输出 | — | `https://ruiqiang-jianzhu.vercel.app` | ✅ 已取得 |
-| Vercel 项目名 | Vercel 控制台 / `vercel link` | 建议 `ruiqiang-jianzhu` | `ruiqiang-jianzhu`（scope：`elaina0x209s-projects`） | ✅ 已创建 |
-| Netlify 站点名（备选） | Netlify 控制台 | — | 未使用（Vercel 主路径已上线） | ➖ 不需要 |
+| 站点绝对 URL | `lib/site.ts` → `SITE_URL`；环境变量 `NEXT_PUBLIC_SITE_URL` | `http://localhost:3000` | 线上设为 `https://ruiqiang-jianzhu.netlify.app` | ✅ 已取得 |
+| 线上地址 | `DEVELOPMENT_PLAN.md` / `TASKS.md` 验证输出 | — | `https://ruiqiang-jianzhu.netlify.app` | ✅ 已取得 |
+| Netlify 站点名 | Netlify 控制台 | — | `ruiqiang-jianzhu`（site id `20b3c4a5-0258-4453-85fc-ee9c75b8ceda`） | ✅ 已创建 |
+| ~~Vercel 项目名~~ | — | — | **已删除**（2026-09-28 按用户要求下线） | ➖ 已移除 |
 
 > ⚠️ 取得线上 URL 后，**必须**回头设置 `NEXT_PUBLIC_SITE_URL` 并重新部署，否则 `sitemap.xml` 与 OG 标签里仍是 `localhost:3000`。
 
@@ -37,7 +37,7 @@
 
 | 项 | 代码位置 | 状态 |
 |---|---|---|
-| ICP 备案号 | `components/SiteFooter.tsx` 注释占位 | ⬜ 当前无备案（Vercel 境外托管无需备案） |
+| ICP 备案号 | `components/SiteFooter.tsx` 注释占位 | ⬜ 当前无备案（Netlify 境外托管无需备案） |
 | 施工劳务资质 / 安全生产许可证 | 未建模块 | ⬜ 材料中无 |
 | 真实项目业绩（名称/地点/规模/甲方） | 未建模块 | ⬜ 材料中无，**不得编造** |
 | 人员与设备规模 | 未建模块 | ⬜ 材料中无，**不得编造** |
@@ -75,10 +75,11 @@
 
 | 变量 | 必填 | 用途 | 本地 | 线上 |
 |---|---|---|---|---|
-| `NEXT_PUBLIC_SITE_URL` | ✅ | sitemap / OG / canonical 的绝对 URL 基址 | `http://localhost:3000` | ⬜ 待 A8 |
+| `NEXT_PUBLIC_SITE_URL` | ✅ | sitemap / OG / canonical 的绝对 URL 基址 | `http://localhost:3000` | `https://ruiqiang-jianzhu.netlify.app` |
 | `NEXT_PUBLIC_AMAP_KEY` | ⬜ 仅 SDK-MODE | 高德 JS API 密钥 | 不设 | 不设 |
 
-> 本地放 `.env.local`（已被 `.gitignore` 覆盖）；线上在 Vercel / Netlify 控制台的 Environment Variables 中配置。
+> 本地放 `.env.local`（已被 `.gitignore` 覆盖）；线上在 **Netlify 控制台**的
+> Environment Variables 中配置（当前唯一部署目标）。
 
 ---
 
@@ -106,6 +107,12 @@
 | 项 | 值 | 状态 |
 |---|---|---|
 | GitHub 仓库 | `https://github.com/Elari39/ruiqiang-website`（public，MIT） | ✅ 已上线 |
-| Vercel 项目名 | `ruiqiang-jianzhu`（scope `elaina0x209s-projects`） | ✅ 已创建 |
-| 生产域名 | `https://ruiqiang-jianzhu.vercel.app` | ✅ 已上线（Git 集成，push 即自动部署） |
-| `NEXT_PUBLIC_SITE_URL`（Vercel 环境变量） | `https://ruiqiang-jianzhu.vercel.app`（Production） | ✅ 已配置并重新部署生效 |
+| Netlify 站点 | `ruiqiang-jianzhu`（site id `20b3c4a5-0258-4453-85fc-ee9c75b8ceda`） | ✅ 已创建 |
+| 生产域名 | `https://ruiqiang-jianzhu.netlify.app` | ✅ 已上线（站点由用户自行部署） |
+| `NEXT_PUBLIC_SITE_URL`（Netlify 环境变量） | `https://ruiqiang-jianzhu.netlify.app` | ✅ 已配置 |
+| ~~Vercel 项目~~ | 已于 2026-09-28 按要求**彻底删除**（项目 + 域名），`ruiqiang-jianzhu.vercel.app` 现返回 404 | ➖ 已下线 |
+
+> **部署目标变更记录（2026-09-28）**：最初按 PRD §9 部署在 Vercel，
+> 后用户要求只保留 Netlify 并自行完成部署，因此 Vercel 项目被整体删除。
+> 源码侧未做任何平台绑定改动 —— `netlify.toml` 本就是增量配置，
+> `next.config.ts` 仍为默认空配置，这也是当初「无平台锁定」断言的价值所在。
