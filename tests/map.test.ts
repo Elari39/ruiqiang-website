@@ -42,7 +42,7 @@ function makeEnv(opts: {
     execCommand:
       opts.execCommand === undefined
         ? undefined
-        : (cmd: string) => {
+        : () => {
             log.execCalled++;
             if (opts.execCommand === "throw") throw new Error("boom");
             return opts.execCommand as boolean;

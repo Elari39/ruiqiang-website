@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -5,13 +6,19 @@ import { SiteImage } from "@/components/SiteImage";
 import { COMPANY, MAIL_HREF, TEL_HREF } from "@/lib/company";
 import { SITE_TAGLINE } from "@/lib/site";
 import { CAPABILITIES, GALLERY, HERO_IMAGE } from "@/lib/content";
+import { buildMetadata } from "@/lib/metadata";
 
 /**
  * 首页（PRD §4.1）
  *
  * 文案纪律：本页所有事实性表述都能在 lib/company.ts（源自 txt / 营业执照）
  * 或 PRD §2 找到出处。未出现业绩、客户、人员、资质类内容（PRD §6.2 不做项）。
+ *
+ * 标题：首页的 title 由 here 显式给出完整串（含站名），
+ * 因为 layout 的 title.template 对"最顶层"页面不会重复套用，
+ * 显式写可以保证首页标题就是 `${站名}｜${定位}`。
  */
+export const metadata: Metadata = buildMetadata("/");
 
 const TONE_CLASS: Record<string, string> = {
   yellow: "bg-brand-yellow",

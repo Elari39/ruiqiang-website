@@ -10,11 +10,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { BUSINESS_SCOPE, COMPANY, TEL_HREF } from "@/lib/company";
 import { SERVICE_GROUPS } from "@/lib/content";
+import { buildMetadata } from "@/lib/metadata";
 
-export const metadata: Metadata = {
-  title: "服务项目",
-  description: `${COMPANY.name}服务项目：建筑劳务分包、建设工程施工、施工专业作业、建设工程设计、住宅室内装饰装修、建设工程监理，以及工程管理服务、装卸搬运、园林绿化工程施工、建筑材料销售、机械设备租赁等配套服务。`,
-};
+export const metadata: Metadata = buildMetadata("/services");
 
 /**
  * 服务项目（PRD §4.2）

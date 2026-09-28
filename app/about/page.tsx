@@ -7,11 +7,9 @@ import {
   REGISTRATION_FIELDS,
   TEL_HREF,
 } from "@/lib/company";
+import { buildMetadata } from "@/lib/metadata";
 
-export const metadata: Metadata = {
-  title: "关于我们",
-  description: `${COMPANY.name}成立于 2023 年 6 月 30 日，注册地位于${COMPANY.address}，法定代表人${COMPANY.legalRepresentative}，企业类型${COMPANY.companyType}，经营状态${COMPANY.status}。`,
-};
+export const metadata: Metadata = buildMetadata("/about");
 
 /**
  * 关于我们（PRD §4.4）

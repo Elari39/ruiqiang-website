@@ -2,11 +2,9 @@ import type { Metadata } from "next";
 import { CopyAddress } from "@/components/CopyAddress";
 import { MapEmbed } from "@/components/MapEmbed";
 import { COMPANY, MAIL_HREF, TEL_HREF } from "@/lib/company";
+import { buildMetadata } from "@/lib/metadata";
 
-export const metadata: Metadata = {
-  title: "联系我们",
-  description: `${COMPANY.name}联系方式：电话 ${COMPANY.phone}，邮箱 ${COMPANY.email}，注册地址${COMPANY.address}。`,
-};
+export const metadata: Metadata = buildMetadata("/contact");
 
 /**
  * 联系我们（PRD §4.5）

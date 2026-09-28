@@ -1,11 +1,8 @@
 import type { Metadata } from "next";
 import { GalleryGrid } from "@/components/GalleryGrid";
-import { COMPANY } from "@/lib/company";
+import { buildMetadata } from "@/lib/metadata";
 
-export const metadata: Metadata = {
-  title: "工程实拍",
-  description: `${COMPANY.name}施工现场记录：底板钢筋绑扎、施工人员在钢筋网上作业、钢结构厂房内楼板钢筋绑扎等作业面实拍照片。`,
-};
+export const metadata: Metadata = buildMetadata("/gallery");
 
 /**
  * 工程实拍（PRD §4.3）
