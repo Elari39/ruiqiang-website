@@ -1,0 +1,37 @@
+图片派生报告
+生成时间: 2026-09-28T09:19:09.222Z
+
+== 合规闸门 ==
+  [拒绝] c9231b84a2a8285c28081548ec3cfb41.jpg —— 不产出任何派生品
+         原因: 营业执照原件照片，含统一社会信用代码与法定代表人姓名（PRD §5.4 硬性禁止发布）
+
+== 处理白名单素材 ==
+  storefront  (源 1847x1239)
+    产出 4 个文件，最大 storefront-1600.webp 89KB
+
+  rebar-slab  (源 1919x1080)
+    产出 4 个文件，最大 rebar-slab-1600.webp 259KB
+
+  rebar-crew  (源 1919x1080)
+    产出 4 个文件，最大 rebar-crew-1600.webp 225KB
+
+  steel-frame-slab  (源 1919x1080)
+    产出 4 个文件，最大 steel-frame-slab-1600.webp 194KB
+
+  steel-frame-wide  (源 1919x1080)
+    产出 4 个文件，最大 steel-frame-wide-1600.webp 269KB
+
+== OG 分享卡片 ==
+  og-cover.jpg  1280x720  223KB
+
+== public/ 隔离复核 ==
+  public/ 文件总数: 26
+  隔离目录泄漏: 0 (无)
+  超 400KB 的 jpg: 0 (无)
+
+== 汇总 ==
+  已处理: 5 张
+  已跳过: 0 张
+  已拒绝: 1 张
+  派生文件: 20 个 + 1 张 OG 卡片
+  体积超标: 0 个
