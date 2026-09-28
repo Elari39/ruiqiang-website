@@ -6,26 +6,46 @@
  * 令牌来源：neobrutalism.com 官方安装文档（/docs/installation）的 Tailwind v4 主题，
  * 按本项目需要做了三处调整（均有依据）：
  *   1. 关闭暗色模式（PRD §6.2 明确不做深色模式）→ 删除 .dark 块，集中亮色一套。
- *   2. 字体令牌改为「拉丁 + 汉字」双字体链（PRD §5.2）→ 见 --font-head / --font-body。
+ *   2. 字体令牌改为「拉丁 + 汉字」双字体链（PRD §5.2）→ 见 --font-head / --font-sans。
  *   3. 补充 --brand-* 高饱和色块，用于交错排布（PRD §5.1）。
  *
- * --radius: 0 与无模糊硬阴影是 neobrutalism 视觉的两个支点，勿改。
+ * 关键：neobrutalism 的视觉靠 `--radius: 0` 与「无模糊硬阴影」两个支点。
+ * 组件源码（components/ui/*）直接使用 Tailwind 的默认 `rounded-*` / `shadow-*`
+ * 工具类，这些类**不在 CSS 里**，而是由 Tailwind 在 @theme 解析阶段生成的。
+ * 因此本文件必须把这两族工具类**重定义**成零圆角与实体偏移阴影，
+ * 这样既不用改动 5 个组件源码，又让全站（含我们自己写的页面）统一生效。
+ * 下面 `--radius-*: 0` 与 `--shadow-*` 的覆盖即为此目的，勿删。
  */
+
+@theme {
+  /* 零圆角：覆盖 Tailwind 默认的 rounded-sm/md/lg/xl 数值 */
+  --radius-xs: 0;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
+  --radius-2xl: 0;
+  --radius-3xl: 0;
+  --radius-4xl: 0;
+
+  /*
+   * 无模糊实体偏移阴影：覆盖 Tailwind 默认的 shadow-sm/md/lg/xl。
+   * 默认值（如 0 1px 3px 0 rgb(0 0 0 / 0.1)）带模糊，会立刻破坏粗野主义观感。
+   */
+  --shadow-2xs: 1px 1px 0 0 #000;
+  --shadow-xs: 2px 2px 0 0 #000;
+  --shadow-sm: 3px 3px 0 0 #000;
+  --shadow-md: 4px 4px 0 0 #000;
+  --shadow-lg: 6px 6px 0 0 #000;
+  --shadow-xl: 8px 8px 0 0 #000;
+  --shadow-2xl: 12px 12px 0 0 #000;
+}
 
 @theme inline {
   --font-head: var(--font-latin-head), var(--font-sc-head), var(--font-cjk-fallback);
   --font-sans: var(--font-latin-body), var(--font-sc-body), var(--font-cjk-fallback);
 
   --radius: var(--radius);
-
-  /* 无模糊实体偏移阴影（纯黑） */
-  --shadow-xs: 1px 1px 0 0 var(--border);
-  --shadow-sm: 2px 2px 0 0 var(--border);
-  --shadow: 3px 3px 0 0 var(--border);
-  --shadow-md: 4px 4px 0 0 var(--border);
-  --shadow-lg: 6px 6px 0 0 var(--border);
-  --shadow-xl: 10px 10px 0 1px var(--border);
-  --shadow-2xl: 16px 16px 0 1px var(--border);
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -101,6 +121,39 @@
     transition: none;
     transform: none;
   }
+}
+
+/*
+ * 防御性声明：把圆角与阴影的**最终解析值**钉死在 :root。
+ *
+ * 为什么需要这一层（真实踩过）：
+ *   shadcn init 会往项目里注入自己的一套 CSS 变量。若那套变量在层叠中
+ *   排在本文件之后，`--radius-md` / `--radius-lg` / `--radius-xl` 就会被改成非零，
+ *   于是组件里的 `.rounded{border-radius:var(--radius)}`、
+ *   `.rounded-lg{border-radius:var(--radius-lg)}` 全部解析出真实圆角，
+ *   粗野主义观感当场失效（构建产物里能看到 min(var(--radius-md),10px) 之类残留）。
+ *
+ *   把最终值直接写在 :root（而不是只在 @theme 里改主题标度），
+ *   就能保证无论谁后注入变量，组件解析到的都是 0 与实体偏移阴影。
+ *   这些是**最终值**，不是主题标度，所以放在 :root 而不是 @theme。
+ */
+:root {
+  --radius-xs: 0;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
+  --radius-2xl: 0;
+  --radius-3xl: 0;
+  --radius-4xl: 0;
+
+  --shadow-2xs: 1px 1px 0 0 #000;
+  --shadow-xs: 2px 2px 0 0 #000;
+  --shadow-sm: 3px 3px 0 0 #000;
+  --shadow-md: 4px 4px 0 0 #000;
+  --shadow-lg: 6px 6px 0 0 #000;
+  --shadow-xl: 8px 8px 0 0 #000;
+  --shadow-2xl: 12px 12px 0 0 #000;
 }
 
 html {

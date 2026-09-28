@@ -5,6 +5,11 @@ import { SITE_NAME, SITE_TAGLINE, SITE_URL } from "@/lib/site";
 import { COMPANY } from "@/lib/company";
 
 /*
+ * 注意：shadcn init 会自动往本文件注入一个 `Geist` 字体并给它 `--font-sans`。
+ * 本项目不需要 Geist（字体方案见下），已移除。若将来重跑 `shadcn init`，
+ * 请再次检查本文件，勿让 Geist 覆盖 `--font-sans` 令牌。
+ */
+/*
  * 中英双字体配对（PRD §5.2）
  *
  * 拉丁字形：Archivo Black（标题）/ Space Grotesk（正文）—— 只含拉丁，体积小，全站常驻。
@@ -79,7 +84,10 @@ export default function RootLayout({
   ].join(" ");
 
   return (
-    <html lang="zh-CN" className={`${fontVars} h-full antialiased`}>
+    <html
+      lang="zh-CN"
+      className={`${fontVars} h-full antialiased font-sans`}
+    >
       <body className="min-h-full flex flex-col bg-background text-foreground">
         {children}
       </body>
