@@ -1,0 +1,17 @@
+# 统一换行符：入库一律 LF，检出时由 Git 按平台处理。
+# 若将来加入 Dockerfile / shell 脚本 / CI 配置，这一条能避免 CRLF 进容器后执行失败。
+* text=auto eol=lf
+
+# 图片与字体属二进制，禁止任何换行转换（否则文件会被静默损坏）
+*.jpg  binary
+*.jpeg binary
+*.png  binary
+*.webp binary
+*.avif binary
+*.gif  binary
+*.ico  binary
+*.woff binary
+*.woff2 binary
+
+# lock 文件按文本处理但不要 diff 噪音
+package-lock.json -diff
