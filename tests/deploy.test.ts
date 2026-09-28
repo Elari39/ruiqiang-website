@@ -50,17 +50,48 @@ function stripComments(src: string): string {
 }
 
 describe("A8 · 部署可移植性", () => {
-  it("★ 不存在平台专属配置文件（保证换平台不用改代码）", () => {
-    const platformFiles = ["vercel.json", "netlify.toml", "_redirects", "_headers"];
-    const present = platformFiles.filter((f) => fs.existsSync(path.join(ROOT, f)));
+  /**
+   * 本测试的**真实意图**是「换平台不用改源码」，不是「一个平台配置文件都不许有」。
+   *
+   * 演进记录（2026-09-28 双平台部署）：
+   *   原先这里断言 `netlify.toml` 等文件一律不存在。后来用户要求并行部署到
+   *   Netlify，于是新增了 `netlify.toml`。此时若继续禁止它，就是**把手段当成目的** ——
+   *   该文件是**增量**的：它只对 Netlify 生效，Vercel 完全忽略它，
+   *   而真正的可移植性保证（`next.config.ts` 保持默认、无 Route Handler、
+   *   零平台专属环境变量）全部保留。
+   *
+   *   因此断言改为「允许各平台自己的配置文件，但源码侧必须保持通用」——
+   *   并把「必须存在 Netlify 运行时插件」写成正向断言，
+   *   因为少了它就会静默退化成「把 .next 当静态目录直传」。
+   */
+  it("平台配置文件若存在，必须是增量式的（不劫持源码可移植性）", () => {
+    // vercel.json 仍然禁止：本项目在 Vercel 上零配置即可，加它属于无谓锁定
     expect(
-      present,
-      `出现了平台锁定文件：${present.join(" / ")} —— ` +
-        `它们会让站点只能部署到对应平台，请改用 next.config.ts 里的通用配置`,
-    ).toEqual([]);
+      fs.existsSync(path.join(ROOT, "vercel.json")),
+      "出现了 vercel.json。本项目在 Vercel 上零配置即可部署（原生识别 Next 16），" +
+        "加它属于无谓的平台锁定",
+    ).toBe(false);
+
+    // netlify.toml 允许存在，但内容必须正确（见下一条）
+    const hasNetlify = fs.existsSync(path.join(ROOT, "netlify.toml"));
+    expect(typeof hasNetlify).toBe("boolean");
   });
 
-  it("★ next.config 未开启 output:'export'（否则 next/image 优化会失效）", () => {
+  it("★ netlify.toml 若存在，必须声明 @netlify/plugin-nextjs", () => {
+    const file = path.join(ROOT, "netlify.toml");
+    if (!fs.existsSync(file)) return; // 未走 Netlify 路径时跳过
+
+    const toml = fs.readFileSync(file, "utf8");
+    expect(
+      toml,
+      "netlify.toml 未声明 @netlify/plugin-nextjs。只写 publish='.next' 而不装这个插件时，" +
+        "Netlify 会把 .next 当成纯静态目录直传 —— _next/static 之外的东西" +
+        "（App Router 路由分发、next/image 优化端点）会静默失效，" +
+        "页面可能仍能打开但图片优化与部分路由行为不对，属于难排查的退化。",
+    ).toContain("@netlify/plugin-nextjs");
+  });
+
+  it("★ 未启用静态导出（否则 next/image 优化会失效）", () => {
     const code = stripComments(readNextConfig());
     expect(
       code,

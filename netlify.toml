@@ -1,0 +1,43 @@
+# Netlify 备选路径的配置。
+#
+# Vercel 主路径不需要任何对应文件（见 VERIFY_DEPLOY.md 的平台对照表），
+# 且 next.config.ts 保持默认空配置 —— 两家平台共用同一份代码，切换不改一行源码。
+#
+# 走法 A（Netlify 的 Next.js 运行时）就是下面这个 plugin。
+# 走法 B（output:"export" 纯静态导出）才不需要它，但那会连带关掉 next/image
+# 的服务端优化并要求 images.unoptimized: true，本项目不采用。
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+# 必须显式声明这个插件。
+# 只写 publish = ".next" 而不装插件时，Netlify 会把 .next 当成纯静态目录直传，
+# 结果是 _next/static 之外的东西（App Router 路由分发、next/image 优化端点、
+# 服务端产物）全部失效。插件会接管这两件事，行为与 Vercel 最接近。
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# 安全响应头。两家平台都可加，这里对 Netlify 显式声明。
+# 注意：不要在 next.config.ts 里重复配置 headers，否则两边口径会漂移。
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    X-Frame-Options = "SAMEORIGIN"
+
+# public/images/ 下的文件名不含内容哈希（形如 storefront-1600.webp），
+# 所以这里用一周而非一年 —— 重新跑 npm run images 换图后，
+# immutable 会让用户长时间拿到旧图。
+
+[[headers]]
+  for = "/images/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
+
+# Next.js 的静态产物自带内容哈希，可以放心长缓存。
+[[headers]]
+  for = "/_next/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
