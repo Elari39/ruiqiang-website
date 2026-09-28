@@ -54,14 +54,17 @@ export function SiteHeader() {
       <div className="mx-auto flex w-full max-w-6xl items-center gap-4 px-4 py-3 sm:px-6">
         <Link
           href="/"
-          className="font-head text-base leading-tight sm:text-lg"
+          className="font-head min-w-0 truncate text-sm leading-tight sm:text-base lg:text-lg"
           aria-label={`${COMPANY.name} 首页`}
         >
           {COMPANY.name}
         </Link>
 
-        {/* 桌面导航 */}
-        <nav aria-label="主导航" className="ml-auto hidden md:block">
+        {/* 桌面导航：lg 起才展开。
+            实测 768px（md）时导航项会折行（"服务项 目"、"关于我 们"），
+            因为公司全称 + 5 项导航 + 电话号码在 768 宽下塞不下。
+            改用 lg（1024）断点，768 走汉堡菜单，避免中文标签被拆行。 */}
+        <nav aria-label="主导航" className="ml-auto hidden lg:block">
           <ul className="flex items-center gap-1">
             {NAV_ITEMS.map((item) => {
               const active = pathname === item.href;
@@ -71,7 +74,7 @@ export function SiteHeader() {
                     href={item.href}
                     aria-current={active ? "page" : undefined}
                     className={cn(
-                      "inline-block border-2 px-3 py-1.5 text-sm",
+                      "inline-block border-2 px-3 py-1.5 text-sm whitespace-nowrap",
                       active
                         ? "border-border bg-brand-yellow shadow-sm"
                         : "border-transparent hover:border-border hover:bg-card hover:shadow-sm"
@@ -88,16 +91,16 @@ export function SiteHeader() {
         {/* 常驻电话（桌面） */}
         <a
           href={TEL_HREF}
-          className="ml-auto hidden border-2 border-border bg-brand-green px-3 py-1.5 text-sm shadow-sm nb-lift md:ml-0 md:inline-block"
+          className="ml-auto hidden border-2 border-border bg-brand-green px-3 py-1.5 text-sm whitespace-nowrap shadow-sm nb-lift lg:ml-0 lg:inline-block"
         >
           电话 {COMPANY.phone}
         </a>
 
-        {/* 手机端：电话 + 汉堡 */}
-        <div className="ml-auto flex items-center gap-2 md:hidden">
+        {/* 手机 / 平板端：电话 + 汉堡 */}
+        <div className="ml-auto flex items-center gap-2 lg:hidden">
           <a
             href={TEL_HREF}
-            className="border-2 border-border bg-brand-green px-2.5 py-1.5 text-sm shadow-sm"
+            className="border-2 border-border bg-brand-green px-2.5 py-1.5 text-sm whitespace-nowrap shadow-sm"
           >
             致电
           </a>
@@ -108,18 +111,18 @@ export function SiteHeader() {
             aria-expanded={open}
             aria-controls="mobile-nav"
             aria-label={open ? "关闭导航菜单" : "打开导航菜单"}
-            className="border-2 border-border bg-card px-2.5 py-1.5 text-sm shadow-sm"
+            className="border-2 border-border bg-card px-2.5 py-1.5 text-sm whitespace-nowrap shadow-sm"
           >
             {open ? "关闭" : "菜单"}
           </button>
         </div>
       </div>
 
-      {/* 手机端展开面板 */}
+      {/* 手机 / 平板端展开面板 */}
       {open && (
         <div
           id="mobile-nav"
-          className="border-t-2 border-border bg-background md:hidden"
+          className="border-t-2 border-border bg-background lg:hidden"
         >
           <nav aria-label="移动端导航">
             <ul className="px-4 py-3 sm:px-6">

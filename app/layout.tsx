@@ -88,25 +88,27 @@ export default function RootLayout({
 
   return (
     <html lang="zh-CN" className={`${fontVars} h-full antialiased font-sans`}>
-      <body className="min-h-full flex flex-col bg-background text-foreground">
+      {/*
+       * 底部内边距为手机悬浮致电条预留。
+       *
+       * ⚠️ 必须加在 <body>（也就是**页脚之后仍属于文档流的那一层**），
+       *    而不是只加在包裹 {children} 的 div 上 —— 因为 <footer> 是那个 div 的
+       *    **兄弟节点**，给它前面的 div 加 pb 对页脚毫无作用，版权行会被悬浮条盖住。
+       *    （这是实测发现的真实缺陷：截图里页脚最后一行被绿色条压住。）
+       *
+       * 数值直接引用 MobileCallBar 导出的常量，避免两处各写一个数字后走偏。
+       * md 断点起悬浮条隐藏，内边距随之归零。
+       */}
+      <body
+        className="min-h-full flex flex-col bg-background text-foreground pb-[var(--mobile-call-bar-space)] md:pb-0"
+        style={
+          {
+            "--mobile-call-bar-space": `${MOBILE_CALL_BAR_HEIGHT}px`,
+          } as React.CSSProperties
+        }
+      >
         <SiteHeader />
-
-        {/*
-         * 底部内边距为手机悬浮致电条预留：数值直接取自 MobileCallBar 导出的常量，
-         * 避免两处各写一个数字后走偏（悬浮条永久遮挡页脚是这类组件的典型真实缺陷）。
-         * md 断点起悬浮条隐藏，内边距随之归零。
-         */}
-        <div
-          className="flex flex-1 flex-col pb-[var(--mobile-call-bar-space)] md:pb-0"
-          style={
-            {
-              "--mobile-call-bar-space": `${MOBILE_CALL_BAR_HEIGHT}px`,
-            } as React.CSSProperties
-          }
-        >
-          {children}
-        </div>
-
+        <div className="flex flex-1 flex-col">{children}</div>
         <SiteFooter />
         <MobileCallBar />
       </body>

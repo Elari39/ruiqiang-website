@@ -60,7 +60,7 @@ next-env.d.ts
 /_shot/
 /tmp/
 /tests/probe-out/
-/_b.log
+/_*.log
 
 # 原始素材归档目录：内含跨页复用的门头原图，**禁止进入 public/，禁止发布**
 /img/_orig_not_published/

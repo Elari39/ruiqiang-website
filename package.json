@@ -10,7 +10,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "images": "node scripts/build-images.mjs"
+    "images": "node scripts/build-images.mjs",
+    "check:responsive": "node scripts/check-responsive.mjs",
+    "check:interactions": "node scripts/check-interactions.mjs"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",

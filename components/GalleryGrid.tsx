@@ -11,7 +11,7 @@
  *   横向滚动本身就支持左右滑动，且不引入任何依赖，还能被键盘与读屏软件识别。
  *   弹层内部同样可横向滑动，让手机上不用返回就能看下一张。
  */
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -25,6 +25,16 @@ export function GalleryGrid() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const current = openIndex === null ? null : GALLERY[openIndex];
 
+  /*
+   * 记住是哪个按钮打开的弹层，关闭时把焦点还回去。
+   *
+   * 为什么需要手动做：本组件的 Dialog 用的是**受控 open**（`open={openIndex !== null}`），
+   * 而不是 Radix 的 <DialogTrigger>。Radix 只在自己托管的 Trigger 上自动做焦点归还，
+   * 受控模式下它不知道该还给谁，实测关闭后焦点落到 <body>，
+   * 键盘用户会丢失位置（可访问性回退）。因此显式记录并归还。
+   */
+  const triggerRefs = useRef<Array<HTMLButtonElement | null>>([]);
+
   return (
     <>
       {/* 缩略图网格 */}
@@ -32,6 +42,9 @@ export function GalleryGrid() {
         {GALLERY.map((g, i) => (
           <li key={g.key}>
             <button
+              ref={(el) => {
+                triggerRefs.current[i] = el;
+              }}
               type="button"
               onClick={() => setOpenIndex(i)}
               aria-label={`放大查看：${g.caption}`}
@@ -60,7 +73,15 @@ export function GalleryGrid() {
         }}
       >
         {current && (
-          <DialogContent className="max-w-[min(96vw,1100px)] border-2 border-border bg-card p-0 shadow-xl sm:max-w-[min(92vw,1100px)]">
+          <DialogContent
+            className="max-w-[min(96vw,1100px)] border-2 border-border bg-card p-0 shadow-xl sm:max-w-[min(92vw,1100px)]"
+            onCloseAutoFocus={(e) => {
+              // 接管控件的焦点归还，回到当初点开的那个按钮
+              e.preventDefault();
+              const i = openIndex;
+              if (i !== null) triggerRefs.current[i]?.focus();
+            }}
+          >
             <DialogTitle className="border-b-2 border-border px-4 py-3 font-head text-base">
               {current.caption}
             </DialogTitle>
