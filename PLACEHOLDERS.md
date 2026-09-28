@@ -9,10 +9,10 @@
 
 | 项 | 代码位置 | 当前值 | 取得后填入 | 状态 |
 |---|---|---|---|---|
-| 站点绝对 URL | `lib/site.ts` → `SITE_URL`；环境变量 `NEXT_PUBLIC_SITE_URL` | `http://localhost:3000` | | ⬜ 待 A8 |
-| 线上地址 | `DEVELOPMENT_PLAN.md` / `TASKS.md` 验证输出 | — | | ⬜ 待 A8 |
-| Vercel 项目名 | Vercel 控制台 / `vercel link` | 建议 `ruiqiang-jianzhu` | | ⬜ 待确认 |
-| Netlify 站点名（备选） | Netlify 控制台 | — | | ⬜ 备选 |
+| 站点绝对 URL | `lib/site.ts` → `SITE_URL`；环境变量 `NEXT_PUBLIC_SITE_URL` | `http://localhost:3000` | 线上已设为 `https://ruiqiang-jianzhu.vercel.app` | ✅ 已取得 |
+| 线上地址 | `DEVELOPMENT_PLAN.md` / `TASKS.md` 验证输出 | — | `https://ruiqiang-jianzhu.vercel.app` | ✅ 已取得 |
+| Vercel 项目名 | Vercel 控制台 / `vercel link` | 建议 `ruiqiang-jianzhu` | `ruiqiang-jianzhu`（scope：`elaina0x209s-projects`） | ✅ 已创建 |
+| Netlify 站点名（备选） | Netlify 控制台 | — | 未使用（Vercel 主路径已上线） | ➖ 不需要 |
 
 > ⚠️ 取得线上 URL 后，**必须**回头设置 `NEXT_PUBLIC_SITE_URL` 并重新部署，否则 `sitemap.xml` 与 OG 标签里仍是 `localhost:3000`。
 
@@ -105,7 +105,7 @@
 
 | 项 | 值 | 状态 |
 |---|---|---|
-| GitHub 仓库 | 见部署输出 | ⬜ 待部署 |
-| Vercel 项目名 | `ruiqiang-jianzhu` | ⬜ 待部署 |
-| 生产域名 | `https://ruiqiang-jianzhu.vercel.app` | ⬜ 待部署确认 |
-| `NEXT_PUBLIC_SITE_URL`（Vercel 环境变量） | 同生产域名 | ⬜ 待配置 |
+| GitHub 仓库 | `https://github.com/Elari39/ruiqiang-website`（public，MIT） | ✅ 已上线 |
+| Vercel 项目名 | `ruiqiang-jianzhu`（scope `elaina0x209s-projects`） | ✅ 已创建 |
+| 生产域名 | `https://ruiqiang-jianzhu.vercel.app` | ✅ 已上线（Git 集成，push 即自动部署） |
+| `NEXT_PUBLIC_SITE_URL`（Vercel 环境变量） | `https://ruiqiang-jianzhu.vercel.app`（Production） | ✅ 已配置并重新部署生效 |
