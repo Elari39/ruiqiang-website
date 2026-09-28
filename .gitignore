@@ -12,10 +12,14 @@
 
 # testing
 /coverage
+/test-results/
 
 # next.js
 /.next/
 /out/
+/.nextbuild*
+# 构建包装脚本轮换用的旧构建目录（形如 .next.stale / .next.stale.stale）
+.next*.stale*/
 
 # production
 /build
@@ -23,6 +27,7 @@
 # misc
 .DS_Store
 *.pem
+*.log
 
 # debug
 npm-debug.log*
@@ -30,12 +35,32 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files — keep the example file so the deploy contract is discoverable
 .env*
+!.env.example
 
 # vercel
 .vercel
 
+# netlify
+.netlify
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# ---------------------------------------------------------------------------
+# 以下为项目专有规则。**不要删除**，它们保护不可发布的素材与本地工具产物。
+# ---------------------------------------------------------------------------
+
+# 工具/会话产物
+/.workbuddy/
+
+# 本地截图与探测产物（A5 响应式验证、临时日志）
+/_shot/
+/tmp/
+/tests/probe-out/
+/_b.log
+
+# 原始素材归档目录：内含跨页复用的门头原图，**禁止进入 public/，禁止发布**
+/img/_orig_not_published/

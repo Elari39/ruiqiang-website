@@ -1,26 +1,129 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/*
+ * 重庆锐强建筑劳务有限公司 —— neobrutalism 主题令牌
+ *
+ * 令牌来源：neobrutalism.com 官方安装文档（/docs/installation）的 Tailwind v4 主题，
+ * 按本项目需要做了三处调整（均有依据）：
+ *   1. 关闭暗色模式（PRD §6.2 明确不做深色模式）→ 删除 .dark 块，集中亮色一套。
+ *   2. 字体令牌改为「拉丁 + 汉字」双字体链（PRD §5.2）→ 见 --font-head / --font-body。
+ *   3. 补充 --brand-* 高饱和色块，用于交错排布（PRD §5.1）。
+ *
+ * --radius: 0 与无模糊硬阴影是 neobrutalism 视觉的两个支点，勿改。
+ */
 
 @theme inline {
+  --font-head: var(--font-latin-head), var(--font-sc-head), var(--font-cjk-fallback);
+  --font-sans: var(--font-latin-body), var(--font-sc-body), var(--font-cjk-fallback);
+
+  --radius: var(--radius);
+
+  /* 无模糊实体偏移阴影（纯黑） */
+  --shadow-xs: 1px 1px 0 0 var(--border);
+  --shadow-sm: 2px 2px 0 0 var(--border);
+  --shadow: 3px 3px 0 0 var(--border);
+  --shadow-md: 4px 4px 0 0 var(--border);
+  --shadow-lg: 6px 6px 0 0 var(--border);
+  --shadow-xl: 10px 10px 0 1px var(--border);
+  --shadow-2xl: 16px 16px 0 1px var(--border);
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* 高饱和色块（PRD §5.1：黄 / 蓝 / 粉 / 绿 / 橙 与纯白底交错） */
+  --color-brand-yellow: var(--brand-yellow);
+  --color-brand-blue: var(--brand-blue);
+  --color-brand-pink: var(--brand-pink);
+  --color-brand-green: var(--brand-green);
+  --color-brand-orange: var(--brand-orange);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  /* 中文字体兜底链：字体加载失败也不隐形、版式不崩（PRD §5.2 兜底要求） */
+  --font-cjk-fallback: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+    "Source Han Sans SC", "Noto Sans CJK SC", sans-serif;
+
+  --radius: 0;
+
+  --background: #fff7e8;
+  --foreground: #000;
+  --card: #fff;
+  --card-foreground: #000;
+  --primary: #ffdc58;
+  --primary-hover: #ffd12e;
+  --primary-foreground: #000;
+  --secondary: #000;
+  --secondary-foreground: #fff;
+  --muted: #efe7d6;
+  --muted-foreground: #6b6355;
+  --accent: #ffe7a3;
+  --accent-foreground: #000;
+  --destructive: #e63946;
+  --destructive-foreground: #fff;
+  --border: #000;
+  --input: #fff;
+  --ring: #000;
+
+  --brand-yellow: #ffdc58;
+  --brand-blue: #7cb2ff;
+  --brand-pink: #ffa8d8;
+  --brand-green: #9be89b;
+  --brand-orange: #ffb066;
+}
+
+/* 交互反馈一律位移式，不使用淡入淡出（PRD §5.1） */
+.nb-lift {
+  transition: transform 80ms linear, box-shadow 80ms linear;
+}
+.nb-lift:hover {
+  transform: translate(-3px, -3px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nb-lift,
+  .nb-lift:hover {
+    transition: none;
+    transform: none;
   }
+}
+
+html {
+  /* 中文站点：避免 iOS 横屏字号自动放大导致版式跳变 */
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  /* 中文长词换行：允许在汉字间断行，避免撑破容器产生横向滚动（PRD §7.3） */
+  overflow-wrap: anywhere;
+  word-break: normal;
+  line-break: strict;
+}
+
+/* 标题使用强字重字体链（拉丁 Archivo Black + 汉字 Noto Sans SC 900） */
+h1,
+h2,
+h3,
+.font-head {
+  font-family: var(--font-head);
+  font-weight: 400; /* Archivo Black 只有 400；汉字由 Noto Sans SC 900 承担重量 */
+  letter-spacing: 0.01em;
 }
