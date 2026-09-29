@@ -9,12 +9,20 @@
 
 | 项 | 代码位置 | 当前值 | 取得后填入 | 状态 |
 |---|---|---|---|---|
-| 站点绝对 URL | `lib/site.ts` → `SITE_URL`；环境变量 `NEXT_PUBLIC_SITE_URL` | `http://localhost:3000` | 线上设为 `https://ruiqiang-jianzhu.netlify.app` | ✅ 已取得 |
+| 站点绝对 URL | `lib/site.ts` → `PRODUCTION_SITE_URL`（**代码常量**）；可选覆盖 `NEXT_PUBLIC_SITE_URL` | `https://ruiqiang-jianzhu.netlify.app` | 换域名只改这一个常量 | ✅ 已内置（2026-09-28 事故修复） |
 | 线上地址 | `DEVELOPMENT_PLAN.md` / `TASKS.md` 验证输出 | — | `https://ruiqiang-jianzhu.netlify.app` | ✅ 已取得 |
 | Netlify 站点名 | Netlify 控制台 | — | `ruiqiang-jianzhu`（site id `20b3c4a5-0258-4453-85fc-ee9c75b8ceda`） | ✅ 已创建 |
 | ~~Vercel 项目名~~ | — | — | **已删除**（2026-09-28 按用户要求下线） | ➖ 已移除 |
 
-> ⚠️ 取得线上 URL 后，**必须**回头设置 `NEXT_PUBLIC_SITE_URL` 并重新部署，否则 `sitemap.xml` 与 OG 标签里仍是 `localhost:3000`。
+> ⚠️ **状态更正（2026-09-28 线上取证）**：上一版本表把 `NEXT_PUBLIC_SITE_URL`
+> 记为"✅ 已配置"，但线上实测显示它**并未生效** —— 线上的 `canonical`、`og:url`、
+> `og:image`、`sitemap.xml`、`robots.txt` 全部指向 `http://localhost:3000`。
+> 根因是当时的 `SITE_URL` 只认环境变量、缺失时静默回落 localhost，
+> 于是"漏配"的后果是**悄悄上线错域名**而不是构建报错。
+>
+> 现已改为：**域名以常量内置**，环境变量降级为可选覆盖；且生产构建遇到
+> 非 https / 本机地址 / 带路径的覆盖值会**直接报错终止构建**。
+> 因此线上**不需要配置任何环境变量**，这一项从此不再是"待替换值"。
 
 ---
 
@@ -75,11 +83,16 @@
 
 | 变量 | 必填 | 用途 | 本地 | 线上 |
 |---|---|---|---|---|
-| `NEXT_PUBLIC_SITE_URL` | ✅ | sitemap / OG / canonical 的绝对 URL 基址 | `http://localhost:3000` | `https://ruiqiang-jianzhu.netlify.app` |
+| `NEXT_PUBLIC_SITE_URL` | ⬜ **不必填**（可选覆盖） | 覆盖内置的站点绝对 URL 基址（canonical / OG / sitemap / robots） | 不设（自动用 localhost） | 不设（自动用内置生产域名） |
 | `NEXT_PUBLIC_AMAP_KEY` | ⬜ 仅 SDK-MODE | 高德 JS API 密钥 | 不设 | 不设 |
 
-> 本地放 `.env.local`（已被 `.gitignore` 覆盖）；线上在 **Netlify 控制台**的
-> Environment Variables 中配置（当前唯一部署目标）。
+> **线上不需要配置任何环境变量。** 站点绝对 URL 由 `lib/site.ts` 的
+> `PRODUCTION_SITE_URL` 常量提供；`NEXT_PUBLIC_SITE_URL` 只在需要构建出
+> 别的域名（如 staging）时才设置，且**必须是干净的 https 主机名** ——
+> 设为 `http://`、`localhost`、带路径或查询串的值会让**生产构建直接失败**
+> （`lib/site.ts` 的 `resolveSiteUrl`；对应断言见 `tests/deploy.test.ts`）。
+>
+> 本地如需覆盖，放 `.env.local`（已被 `.gitignore` 覆盖）；契约见 `.env.example`。
 
 ---
 
@@ -93,9 +106,10 @@
 | 营业执照原件照（`img/c9231b84….jpg`） | 含统一社会信用代码与法定代表人姓名，见 PRD §5.4 | ✅ 仍在 |
 | 工商登记摘要源文件（`重庆锐强建筑劳务有限公司.txt`） | 同上，含登记明细 | ✅ 仍在 |
 
-**副作用（需知悉，不是缺陷）**：一台新克隆的仓库跑 `npm run build:images`
-会因缺源图而在「显式拒绝」环节报错 —— 这是**闸门按设计工作**，不是坏了。
-在非本机的全新环境重建派生品，需要单独取得这两张原图放回 `img/`。
+**副作用（需知悉，不是缺陷）**：一台新克隆的仓库跑 `npm run images`
+（脚本名就是 `images`，没有 `build:` 前缀）会因缺源图而在「显式拒绝」环节报错 ——
+这是**闸门按设计工作**，不是坏了。在非本机的全新环境重建派生品，
+需要单独取得这两张原图放回 `img/`。
 
 可公开的 4 张工程实拍原图与门头原图**保留入库**，因此新克隆仍可重建
 `public/images/` 下除 `og-cover.jpg` 派生链之外的全部派生品。
@@ -109,8 +123,15 @@
 | GitHub 仓库 | `https://github.com/Elari39/ruiqiang-website`（public，MIT） | ✅ 已上线 |
 | Netlify 站点 | `ruiqiang-jianzhu`（site id `20b3c4a5-0258-4453-85fc-ee9c75b8ceda`） | ✅ 已创建 |
 | 生产域名 | `https://ruiqiang-jianzhu.netlify.app` | ✅ 已上线（站点由用户自行部署） |
-| `NEXT_PUBLIC_SITE_URL`（Netlify 环境变量） | `https://ruiqiang-jianzhu.netlify.app` | ✅ 已配置 |
+| `NEXT_PUBLIC_SITE_URL`（Netlify 环境变量） | **无需设置** —— 域名已内置为 `lib/site.ts` 的 `PRODUCTION_SITE_URL` | ✅ 已改为"漏配也正确"（2026-09-28 事故修复） |
 | ~~Vercel 项目~~ | 已于 2026-09-28 按要求**彻底删除**（项目 + 域名），`ruiqiang-jianzhu.vercel.app` 现返回 404 | ➖ 已下线 |
+
+> ⚠️ **更正（2026-09-28 线上取证）**：本表此前把 Netlify 环境变量记为"✅ 已配置"，
+> 但 https://ruiqiang-jianzhu.netlify.app/sitemap.xml 实测返回的是
+> `http://localhost:3000/...`，5 页的 `canonical` / `og:url` / `og:image` 与
+> `/robots.txt` 的 `Sitemap:` 行同样是 localhost。也就是说那一行记录与线上事实相反。
+> 现已通过"域名内置 + 生产构建拒绝非法覆盖值"从根上修掉，
+> 并加了直读构建产物的断言防止复发（`tests/seo.test.ts` 的 P0 回归防线）。
 
 > **部署目标变更记录（2026-09-28）**：最初按 PRD §9 部署在 Vercel，
 > 后用户要求只保留 Netlify 并自行完成部署，因此 Vercel 项目被整体删除。

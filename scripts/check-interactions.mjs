@@ -2,9 +2,14 @@
  * A5 补充 · 交互态验证（弹层、汉堡菜单、悬浮条遮挡）
  *
  * 静态截图证明不了交互：
- *   - 相册弹层能不能打开、Esc 能不能关、关掉后焦点有没有回到触发元素
+ *   - 相册弹层能不能打开、**打开的是不是被点击的那一张**、Esc 能不能关、
+ *     关掉后焦点有没有回到触发元素
  *   - 汉堡菜单展开/收起、关闭后焦点归位
  *   - 手机悬浮条到底会不会永久遮住页脚内容（这类组件的头号真实缺陷）
+ *
+ * ⚠️ "打开的是不是被点击的那一张"这条是补上的：原探针只点第 1 张，
+ *    而弹层里"永远显示第 1 张"恰好是缺陷下的正确表现，于是恒过。
+ *    现在故意点第 3 张，并同时校验图注与 `n / 总数` 计数。
  *
  * 这里用 CDP 真的去点、真的去按 Esc，然后读 DOM 状态判定。
  * 用法：node scripts/check-interactions.mjs <baseUrl>
@@ -14,11 +19,13 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 import net from "node:net";
+import { findChrome } from "./chrome-path.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const SHOT_DIR = path.join(ROOT, "_shot");
 const PROBE_DIR = path.join(ROOT, "tests", "probe-out");
-const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
+// 不再硬编码路径：按 CHROME_PATH → 常见安装位置 → PATH 查找（见 chrome-path.mjs）
+const CHROME = findChrome();
 const BASE = process.argv[2] || "http://localhost:3000";
 const PORT = 9334;
 
@@ -194,6 +201,138 @@ async function main() {
       afterEsc?.focusIsTrigger === true,
       `焦点在 <${afterEsc?.focusTag}>`
     );
+
+    // ========== 弹层打开的是「被点击的那一张」（修掉的真实缺陷） ==========
+    //
+    // 缺陷回顾：弹层把 4 张图一次性渲进一个横向 snap 滚动容器，而最初
+    // **没有任何把容器滚到被点击索引的逻辑**。于是点第 3 张，标题写的是第 3 张的
+    // 图注，画面却永远是第 1 张 —— 图注与画面互相矛盾；手指滑到别的图后，
+    // 标题也不会跟着变。
+    //
+    // 为什么原来的探针抓不到：它点的是 `btns[0]`（第 1 张），
+    // 而"显示第 1 张"恰好是缺陷下的正确表现，于是恒过。
+    // 因此这里**故意点第 3 张**（索引 2），让缺陷无处可藏。
+    const CLICK_INDEX = 2;
+    const clicked = await cdp.eval(`
+      (() => {
+        const btns = [...document.querySelectorAll('button[aria-label^="放大查看"]')];
+        if (btns.length <= ${CLICK_INDEX}) {
+          return { ok: false, reason: '缩略图不足 ' + btns.length + ' 张' , total: btns.length };
+        }
+        const captions = btns.map((b) => (b.getAttribute('aria-label') || '').replace('放大查看：', ''));
+        btns[${CLICK_INDEX}].click();
+        return { ok: true, captions, caption: captions[${CLICK_INDEX}], total: btns.length };
+      })()
+    `);
+    await sleep(900);
+
+    const lightbox = await cdp.eval(`
+      (() => {
+        const d = document.querySelector('[role="dialog"]');
+        if (!d) return { open: false };
+
+        // 定位弹层内的横向滚动容器（GalleryGrid 给它挂了 aria-label）
+        const scroller = d.querySelector('[aria-label="工程实拍照片，可左右滑动切换"]');
+        if (!scroller || !scroller.clientWidth) {
+          return { open: true, scroller: false };
+        }
+
+        const titleEl = d.querySelector('[data-slot="dialog-title"]');
+        return {
+          open: true,
+          scroller: true,
+          clientWidth: scroller.clientWidth,
+          scrollWidth: scroller.scrollWidth,
+          scrollLeft: Math.round(scroller.scrollLeft),
+          visibleIndex: Math.round(scroller.scrollLeft / scroller.clientWidth),
+          title: (titleEl ? titleEl.textContent : '') || '',
+          slides: scroller.children.length,
+        };
+      })()
+    `);
+    await shot(cdp, "_interact-lightbox-index.png");
+
+    const titleMatches =
+      lightbox?.scroller === true &&
+      typeof lightbox.title === "string" &&
+      typeof clicked?.caption === "string" &&
+      clicked.caption.length > 0 &&
+      lightbox.title.includes(clicked.caption);
+
+    record(
+      "灯箱打开的是被点击的那张图",
+      lightbox?.scroller === true &&
+        lightbox.visibleIndex === CLICK_INDEX &&
+        titleMatches,
+      `可见索引=${lightbox?.visibleIndex}, 点击索引=${CLICK_INDEX}, ` +
+        `滚动位置=${lightbox?.scrollLeft}/${lightbox?.clientWidth}（scrollWidth=${lightbox?.scrollWidth}, ` +
+        `共 ${lightbox?.slides} 张）, ` +
+        `标题「${lightbox?.title}」, 期望图注「${clicked?.caption}」`
+    );
+
+    // 计数应当与可见照片一致（它是索引同步在界面上的可见证据）
+    const counterText = typeof lightbox?.title === "string"
+      ? (lightbox.title.match(/\d+\s*\/\s*\d+\s*$/) || [""])[0].trim()
+      : "";
+    record(
+      "灯箱计数与可见照片一致",
+      lightbox?.scroller === true && counterText === `${CLICK_INDEX + 1} / ${clicked?.total}`,
+      `计数=「${counterText}」，期望=「${CLICK_INDEX + 1} / ${clicked?.total}」`
+    );
+
+    // ---- 滑动跟随：手指滑到别的图后，标题与计数要跟着变 ----
+    //
+    // 这是缺陷的另一半。只把"打开时定位正确"修好还不够：用户滑到第 2 张后，
+    // 若标题仍写着第 3 张的图注，画面与文字依旧矛盾。
+    // 这里直接改 scrollLeft 模拟一次横向滑动，再读回标题与计数。
+    const SWIPE_TO = 1;
+    await cdp.eval(`
+      (() => {
+        const d = document.querySelector('[role="dialog"]');
+        const s = d && d.querySelector('[aria-label="工程实拍照片，可左右滑动切换"]');
+        if (!s) return false;
+        s.scrollLeft = s.clientWidth * ${SWIPE_TO};
+        return true;
+      })()
+    `);
+    await sleep(700);
+
+    const afterSwipe = await cdp.eval(`
+      (() => {
+        const d = document.querySelector('[role="dialog"]');
+        if (!d) return { open: false };
+        const s = d.querySelector('[aria-label="工程实拍照片，可左右滑动切换"]');
+        const titleEl = d.querySelector('[data-slot="dialog-title"]');
+        return {
+          open: true,
+          visibleIndex: s ? Math.round(s.scrollLeft / s.clientWidth) : null,
+          title: (titleEl ? titleEl.textContent : '') || '',
+        };
+      })()
+    `);
+    const swipeCaption = Array.isArray(clicked?.captions) ? clicked.captions[SWIPE_TO] : "";
+    const swipeCounter = typeof afterSwipe?.title === "string"
+      ? (afterSwipe.title.match(/\d+\s*\/\s*\d+\s*$/) || [""])[0].trim()
+      : "";
+    record(
+      "灯箱内滑动后标题与计数跟随可见照片",
+      afterSwipe?.visibleIndex === SWIPE_TO &&
+        typeof afterSwipe.title === "string" &&
+        swipeCaption.length > 0 &&
+        afterSwipe.title.includes(swipeCaption) &&
+        swipeCounter === `${SWIPE_TO + 1} / ${clicked?.total}`,
+      `可见索引=${afterSwipe?.visibleIndex}, 期望索引=${SWIPE_TO}, ` +
+        `标题「${afterSwipe?.title}」, 期望图注「${swipeCaption}」, 计数=「${swipeCounter}」`
+    );
+
+    // 收起点开的弹层，避免影响后面的用例
+    await cdp.send("Input.dispatchKeyEvent", {
+      type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27,
+    });
+    await cdp.send("Input.dispatchKeyEvent", {
+      type: "keyUp", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27,
+    });
+    await sleep(500);
 
     // ================= 汉堡菜单（手机） =================
     await cdp.send("Emulation.setDeviceMetricsOverride", {

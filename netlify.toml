@@ -1,12 +1,19 @@
 # Netlify 部署配置（当前唯一部署目标：ruiqiang-jianzhu.netlify.app）。
 #
 # 这份文件是**增量**的：只对 Netlify 生效，其他平台完全忽略它。
-# next.config.ts 保持默认空配置 —— 源码侧零平台锁定，
-# 换平台时增删这一个文件即可，不需要改任何源码。
+# next.config.ts 不绑定任何平台（只有一条平台无关的 poweredByHeader:false），
+# 源码侧零平台锁定 —— 换平台时增删这一个文件即可，不需要改任何源码。
 #
 # 走法 A（Netlify 的 Next.js 运行时）就是下面这个 plugin。
 # 走法 B（output:"export" 纯静态导出）才不需要它，但那会连带关掉 next/image
 # 的服务端优化并要求 images.unoptimized: true，本项目不采用。
+#
+# ⚠️ 更正（2026-09-28 复核）：本项目**全站没有使用 next/image**。
+#    components/SiteImage.tsx 手写 <picture>，直接引用 scripts/build-images.mjs
+#    预生成的 1600/800 两档 AVIF/WebP 实体文件。因此上面提到的
+#    "next/image 优化端点"在本项目里既不是走法 A 的收益，也不构成风险。
+#    插件之所以仍然必需，是因为 App Router 的路由分发与服务端产物要靠它接管 ——
+#    只写 publish=".next" 会让 _next/static 之外的东西静默失效。
 
 [build]
   command = "npm run build"
@@ -14,8 +21,8 @@
 
 # 必须显式声明这个插件。
 # 只写 publish = ".next" 而不装插件时，Netlify 会把 .next 当成纯静态目录直传，
-# 结果是 _next/static 之外的东西（App Router 路由分发、next/image 优化端点、
-# 服务端产物）全部失效。插件会接管这两件事，行为与官方 Next 托管最接近。
+# 结果是 _next/static 之外的东西（App Router 路由分发、服务端产物）全部失效。
+# 插件会接管这些，行为与官方 Next 托管最接近。
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 

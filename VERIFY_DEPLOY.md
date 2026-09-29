@@ -13,7 +13,8 @@
 
 **本项目是「静态优先的 Next.js 应用」，平台可自由更换，源码侧无需任何平台专属配置。**
 
-依据 —— 构建输出的路由表（`node scripts/run-next.mjs build` 实测）：
+依据 —— 构建输出的路由表（本机用 `node scripts/run-next.mjs build` 实测；
+它只是绕开本机沙箱的批量删除守卫，Netlify 云端走标准 `npm run build`）：
 
 ```
 Route (app)
@@ -59,31 +60,63 @@ Route (app)
 
 ### 2.2 无平台锁定（无 lock-in）
 
-- 仓库内**不存在** `vercel.json`；`next.config.ts` 保持默认空配置：
+- 仓库内**不存在** `vercel.json`；`next.config.ts` 不绑定任何平台，
+  只有一条平台无关的配置：
   ```ts
-  const nextConfig: NextConfig = { /* config options here */ };
+  const nextConfig: NextConfig = { poweredByHeader: false };
   ```
-  —— 换平台时不需要推翻任何配置。
+  —— 换平台时不需要推翻任何配置（`poweredByHeader` 只是不再对外暴露
+  `X-Powered-By: Next.js` 这个技术栈指纹，与平台无关）。
 - **不存在** `output: "export"`。这一点很关键：设了它虽然平台也能部署，
   但会连带关掉 `next/image` 的服务端优化，并让将来的 Route Handler 全部失效。
   保留默认让 Netlify 的 Next 运行时能接管图片优化。
 - **无 API 路由**：`app/` 下只有页面与 `sitemap.ts` / `robots.ts`（都是构建期
   生成静态文件），没有任何 `route.ts`。所以 Netlify 免费档绰绰有余。
 
-### 2.3 环境变量口径一致
+### 2.3 站点绝对 URL 的解析契约（2026-09-28 重写）
 
-代码里 `NEXT_PUBLIC_SITE_URL` 是**唯一**与部署强相关的变量（`lib/site.ts`）：
+> ⚠️ **本节此前给出的结论是错的，且错得很有代表性。**
+> 上一版这里写的是"`NEXT_PUBLIC_SITE_URL` 是唯一与部署强相关的变量，
+> 缺省回落到 localhost，保证本地构建不需要先配环境变量"—— 那段描述**与代码一致**，
+> 但它把一个**生产事故**当成了特性：线上正是因为没配上这个变量，
+> 导致 `canonical`、`og:url`、`og:image`、`sitemap.xml`、`robots.txt`
+> 全部指向 `http://localhost:3000`。
+>
+> 更值得记下的是**为什么没被发现**：当时的产物级断言只把产物与
+> "同一进程里算出的 `SITE_URL`"比对。体检与病灶出自同一个值，
+> 于是两边同时是 localhost、断言恒真。这类"自洽式断言"只能证明代码自相一致，
+> 证明不了它与现实一致 —— 这是本项目最值得记住的一条教训。
+
+现在的契约（`lib/site.ts` 的 `resolveSiteUrl`）：
 
 ```ts
-export const SITE_URL = (
-  process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"
-).replace(/\/$/, "");
+export const LOCAL_SITE_URL = "http://localhost:3000";
+export const PRODUCTION_SITE_URL = "https://ruiqiang-jianzhu.netlify.app";
+
+// 显式值优先（须为干净的 https 主机名）；未设时按运行环境分层
+export const SITE_URL = resolveSiteUrl(
+  process.env.NEXT_PUBLIC_SITE_URL,
+  process.env.NODE_ENV,
+);
 ```
 
-- 平台控制台的 Environment Variables 里设这个同名变量（当前是 Netlify），
-  无需为平台写分支 —— 没有 `process.env.VERCEL_URL` / `NETLIFY` 之类的平台专属分支。
-- 缺省回落到 `localhost:3000`，保证本地构建（含 `tests/seo.test.ts` 的产物
-  断言）不需要先配环境变量就能跑。
+| 运行环境 / 输入 | 结果 |
+|---|---|
+| 未设变量 + `next build`（`NODE_ENV=production`） | `PRODUCTION_SITE_URL` |
+| 未设变量 + `next dev` / vitest | `LOCAL_SITE_URL` |
+| 设为 `https://example.com/` | `https://example.com`（去空格、去尾斜杠） |
+| 生产构建 + 非 https / 本机地址 / 带路径或查询串 | **抛错，构建失败** |
+
+- 线上**不需要配置任何环境变量**；换域名只改 `PRODUCTION_SITE_URL` 一处。
+- 生产构建对错值显式拒绝，是"宁可不部署，也不要再上线一次错域名"。
+- 断言分两处：解析规则穷举在 `tests/deploy.test.ts`
+  （`A8 · 站点绝对 URL 的解析契约`），产物不得泄漏 localhost 在
+  `tests/seo.test.ts`（`A7 · 站点绝对 URL 不得泄漏 localhost 到产物（P0 回归防线）`）。
+  后者改为对**绝对事实**判定，不再与同进程的 `SITE_URL` 自比。
+- ⚠️ 读产物的断言必须用**产物基址**（`resolveSiteUrl(..., "production")`），
+  不能用测试进程的 `SITE_URL` —— 两者的 `NODE_ENV` 不同，值本来就该不一样。
+- 仍**没有**平台专属分支：只用 `NODE_ENV` 与 `NEXT_PUBLIC_SITE_URL`，
+  `tests/deploy.test.ts` 的"不得出现平台专属环境变量"断言依旧为绿。
 
 ### 2.4 合规闸门在部署链路上仍然有效
 
@@ -176,15 +209,26 @@ npx netlify-cli@latest init
 > 并把 `publish` 写成本机绝对路径（`publishOrigin = "config"`）。
 > 该目录已被 `.gitignore` 忽略、不会入库，但排查时要知道它存在且会覆盖你的预期。
 
-### 3.3 部署后必须回填的两处
+### 3.3 部署后要回填/核对的一处
 
 | 位置 | 填什么 |
 |---|---|
-| `PLACEHOLDERS.md` §1 / §8（站点绝对 URL / 线上地址） | 真实 `https://` 地址 |
-| Netlify 控制台的 `NEXT_PUBLIC_SITE_URL` + 重新部署 | 同上的 `https://` 地址 |
+| `PLACEHOLDERS.md` §1 / §8（线上地址） | 真实 `https://` 地址 |
+| `lib/site.ts` → `PRODUCTION_SITE_URL` | 同上（**换域名时唯一要改的地方**） |
 
-**验证方式**：部署后访问 `/sitemap.xml`，`<loc>` 里必须是线上域名；
-若仍是 `localhost:3000`，说明环境变量没设或没重新部署。
+**Netlify 控制台的 `NEXT_PUBLIC_SITE_URL` 不再是必填项**（域名已内置）。
+但如果它被设成了 `http://localhost:3000` 之类的值，**生产构建会直接失败** ——
+这是刻意设计的，请不要为了"让构建过去"而删掉校验，而应删掉那个错误变量。
+
+**验证方式**：部署后访问 `/sitemap.xml`，`<loc>` 里必须是线上域名。
+⚠️ 注意仅仅"返回 200"**不算通过** —— 线上曾经 200 却全是 `localhost`
+（见 §2.3 的教训），必须核对**内容**：
+
+```powershell
+(Invoke-WebRequest https://ruiqiang-jianzhu.netlify.app/sitemap.xml).Content
+```
+
+5 条 `<loc>` 与 `/robots.txt` 的 `Sitemap:` 行都应当是线上域名，且**不含** `localhost`。
 
 ### 3.4 关于 Vercel（路径已废弃）
 
@@ -205,11 +249,12 @@ PRD §9 原本指定 Vercel。项目一度部署在 `https://ruiqiang-jianzhu.ve
 
 | 检查项 | 状态 | 依据 |
 |---|---|---|
-| 构建退出码 0 | ✅ 已验证 | `scripts/run-next.mjs build` = 0 |
+| 构建退出码 0 | ✅ 已验证 | `scripts/run-next.mjs build` = 0（本机沙箱专用入口） |
 | 8 条路由静态生成 | ✅ 已验证 | 路由表全 ○ + 产物 HTML 存在断言 |
-| `sitemap.xml` / `robots.txt` 可访问 | ✅ 线上已验证 | `https://ruiqiang-jianzhu.netlify.app/sitemap.xml` 返回 200 |
+| ~~`sitemap.xml` / `robots.txt` 可访问~~ | ⚠️ **原判据不足，已替换** | 原依据只写了"返回 200"，而线上 200 的同时内容全是 `localhost` —— 可访问 ≠ 内容正确 |
+| **`sitemap.xml` / `robots.txt` / canonical / og 的 URL 是线上域名** | ⬜ 待本次修复部署后复核 | 构建产物侧已断言为零 localhost（`tests/seo.test.ts`）；线上需按 §3.3 核对内容 |
 | 无平台锁定 | ✅ 已验证 | 无 `vercel.json`、无 `output:"export"`、无 Route Handler |
-| 环境变量口径统一 | ✅ 已验证 | 单一 `NEXT_PUBLIC_SITE_URL` |
+| 站点绝对 URL 解析契约 | ✅ 已验证 | 域名内置 + 生产构建拒绝非法覆盖值（`tests/deploy.test.ts` 18 条） |
 | 合规闸门在产物中生效 | ✅ 已验证 | 营业执照照零派生、零引用 |
 | **线上 `https://` 地址可打开** | ✅ 已验证 | 7 个端点全部 200（见 §2.5） |
 | **无痕窗口 + 手机网络实测** | ⬜ 待你完成 | 需真实设备网络（国内访问速度见 `DEPLOY.md` §3） |
@@ -218,6 +263,13 @@ PRD §9 原本指定 Vercel。项目一度部署在 `https://ruiqiang-jianzhu.ve
 
 ## 5. 一句话总结
 
-**代码与产物这一侧，A8 的所有可自动验证项已全部通过；站点已上线在
-`https://ruiqiang-jianzhu.netlify.app`。** 剩下唯一无法自动化的一项是
-**手机真机 + 无痕窗口的人工观感验收**（拨号唤起、悬浮条遮挡、字体、分享卡片）。
+**代码与产物这一侧，A8 的所有可自动验证项已通过（167 条断言 + 19 项浏览器交互探测）；站点已上线在
+`https://ruiqiang-jianzhu.netlify.app`。**
+
+但必须记下 2026-09-28 的教训：**"构建绿 + 端点 200"曾经与"线上 SEO 元数据全指向
+`http://localhost:3000`"同时成立。** 可自动化的检查通过，不等于线上事实正确 ——
+凡是"产物里到底写了什么"这类事实，都要**直读产物或线上内容**去核对，
+而不是拿代码里的同名值自比。
+
+剩下无法自动化的两项：**手机真机 + 无痕窗口的人工观感验收**（拨号唤起、
+悬浮条遮挡、字体、分享卡片），以及**本次修复部署后对线上 URL 内容的人工复核**。

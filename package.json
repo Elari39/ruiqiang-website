@@ -12,7 +12,8 @@
     "test:watch": "vitest",
     "images": "node scripts/build-images.mjs",
     "check:responsive": "node scripts/check-responsive.mjs",
-    "check:interactions": "node scripts/check-interactions.mjs"
+    "check:interactions": "node scripts/check-interactions.mjs",
+    "test:probes": "node scripts/run-probes.mjs"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",

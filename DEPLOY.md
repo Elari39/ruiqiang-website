@@ -16,6 +16,10 @@
 > ⚠️ **本机不要用 `netlify deploy --build`**：它会在本机跑 `npm run build`，
 > 撞上本机沙箱的 safe-delete 守卫（`.next/turbopack` 递归删除被拦），必然失败。
 > **对 Next.js 应用，Netlify 的正确路径只能是 Git 集成（云端构建）。**
+>
+> 本机若确实需要构建，用 `node scripts/run-next.mjs build` ——
+> 它只是绕开本机沙箱的批量删除守卫，**与 Netlify 云端无关**
+> （云端走的是标准 `npm run build`）。
 
 ---
 
@@ -44,15 +48,29 @@
 
 完成后 push 任意提交即会自动部署，或在该页面点 **Trigger deploy**。
 
-### 1.2 部署后必须做的一件事
+### 1.2 部署后要做的一件事：核对 URL 内容
+
+**不需要在 Netlify 控制台配置任何环境变量。** 站点绝对 URL 已内置为
+`lib/site.ts` 的 `PRODUCTION_SITE_URL`（换域名改这一处即可）。
 
 ```bash
-# 在 Netlify 控制台 → Site configuration → Environment variables 设置：
-#   NEXT_PUBLIC_SITE_URL = https://ruiqiang-jianzhu.netlify.app
-# 然后重新部署（Deploys → Trigger deploy → Clear cache and deploy site）
+# 核对线上内容（不是只看状态码！）
+#   5 条 <loc> 必须是线上域名，且整份内容里不含 localhost
+curl -s https://ruiqiang-jianzhu.netlify.app/sitemap.xml
+curl -s https://ruiqiang-jianzhu.netlify.app/robots.txt
 ```
 
-否则 `sitemap.xml` / OG 卡片里仍是 `localhost:3000`。
+> ⚠️ **为什么要强调"核对内容"**：2026-09-28 线上实测发现
+> `/sitemap.xml`、`/robots.txt` 与 5 页的 `canonical` / `og:url` / `og:image`
+> **全部是 `http://localhost:3000`** —— 而它们返回的都是 200。
+> 当时文档里写的验证方法是"访问 `/sitemap.xml`，看是否可访问"，
+> 于是这个状态持续到了人工发现。**可访问 ≠ 内容正确。**
+
+如果确实需要构建出别的域名（如 staging），才设 `NEXT_PUBLIC_SITE_URL`，
+且**必须是干净的 `https://主机名`**：设成 `http://`、`localhost`、带路径或查询串的值，
+生产构建会**直接报错终止**（`lib/site.ts` 的 `resolveSiteUrl`）。
+所以若构建因这个变量失败，正确做法是**删除或改正该变量**，
+而不是去掉校验。
 
 ### 1.3 上线验证（PRD §7.8）
 
@@ -60,12 +78,15 @@
 |---|---|---|
 | 5 条路由 | 无痕窗口访问 `/` `/services` `/gallery` `/about` `/contact` | 全部 200，渲染正常 |
 | 静态生成 | 看是否出现任何动态错误 | 无 |
-| sitemap / robots | 访问 `/sitemap.xml` `/robots.txt` | 可访问，且 **URL 是线上域名而非 localhost** |
+| sitemap / robots **内容** | 取回全文（不要只看状态码） | 5 条 `<loc>` 与 `Sitemap:` 行都是线上域名，**全文不含 `localhost`** |
+| canonical / og | 查看页面源码（`Ctrl+U`） | `canonical`、`og:url`、`og:image` 的基址都是线上域名 |
+| 404 页 | 访问一个不存在的路径 | 返回 404、显示中文「页面未找到」、套用本站主题 |
 | 联系方式 | 手机浏览器点击电话 / 邮箱 | 唤起拨号盘 / 邮件客户端 |
 | 移动端悬浮条 | 手机访问任意页 | 底部有「立即致电」，且**未遮住页面最后一段内容** |
 | 字体 | 手机访问首屏 | 中文标题为粗黑体（非系统默认宋/黑），无长时间空白 |
 | 分享卡片 | 把链接发到微信/QQ 或使用 OG 调试工具 | 有标题、描述、实拍封面图 |
 | 图片 | DevTools Network | 实际传输 AVIF/WebP，单图 < 300 KB |
+| 灯箱 | 在 `/gallery` 点第 3、4 张缩略图 | 弹层显示的就是被点的那一张，左上角计数为 `3 / 4`、`4 / 4`；左右滑动后标题跟着变 |
 
 ---
 
@@ -89,8 +110,16 @@ Netlify 可以承接（当前已在用），任何支持 Next.js 的平台也都
   package = "@netlify/plugin-nextjs"
 ```
 
-- 不改 `next.config.ts`，`next/image` 的优化由 Netlify 的 Next 运行时插件接管。
-- **优点**：改动最少，保留了 `next/image` 的服务端优化能力。
+- 不改 `next.config.ts`（只有一条平台无关的 `poweredByHeader: false`）。
+- **优点**：改动最少，`.next` 由 Netlify 的 Next 运行时接管（App Router 路由分发、
+  服务端产物都靠它）。
+
+> ⚠️ **更正（2026-09-28 复核）**：这里此前写的是"`next/image` 的优化由
+> Netlify 的 Next 运行时插件接管 / 保留 `next/image` 的服务端优化能力"。
+> 复核后发现 **本项目全站没有使用 `next/image`** —— `components/SiteImage.tsx`
+> 手写 `<picture>`，直接引用 `scripts/build-images.mjs` 预生成的
+> 1600/800 两档 AVIF/WebP 实体文件（这样"发布的到底是哪几个文件"才可逐字断言）。
+> 所以走法 A 的收益**不在图片优化**，而在于让 App Router 的路由分发与服务端产物生效。
 
 #### 走法 B（不推荐）：纯静态导出
 
@@ -104,11 +133,10 @@ const nextConfig = {
 ```
 
 > ⚠️ **两处联动，缺一必错**：
-> 1. 设了 `output:"export"` 后，`next/image` 默认依赖的**运行时图片优化服务不存在了**，必须同时设 `images.unoptimized: true`，否则构建直接报错。
-> 2. `output:"export"` 不支持 Route Handler / 动态函数。本项目**本来就没有**（纯静态），所以安全——但如果将来加了 `/api/og` 之类的边缘函数（见 D3），这条路会断。
+> 1. 设了 `output:"export"` 后，`next/image` 默认依赖的**运行时图片优化服务不存在了**，必须同时设 `images.unoptimized: true`，否则构建直接报错。（本项目虽未用 `next/image`，但这条约束仍然成立。）
+> 2. `output:"export"` 不支持 Route Handler / 动态函数，且会把 App Router 的路由分发退化为静态目录直传。
 >
-> **本项目不采用走法 B**：它为了让产物能当普通静态文件搬走，牺牲了图片优化，
-> 而 PRD §7.5 明确要求「图片体积显著低于原图」。走法 A 没有这个代价。
+> **本项目不采用走法 B**：走法 A 没有额外代价，且产物行为与官方 Next 托管最接近。
 > `tests/deploy.test.ts` 里有断言钉住这一点，改用走法 B 会让测试变红。
 
 ---
@@ -118,7 +146,7 @@ const nextConfig = {
 | 维度 | Netlify（当前所用） | Vercel（已下线） |
 |---|---|---|
 | Next.js 支持 | 需 Next 运行时插件（`netlify.toml` 已声明） | 原生、零配置 |
-| `next/image` 优化 | 走法 A 等同原生 | 开箱即用（运行时） |
+| `next/image` 优化 | 本项目**未使用 `next/image`**（`SiteImage` 直引预生成的 AVIF/WebP 实体文件），此项无关 | 同上，无关 |
 | 配置文件 | `netlify.toml`（本项目**已加入**） | `vercel.json`（本项目**不需要**） |
 | 国内访问速度 | **慢**（无中国大陆节点，跨境链路。首字节常 1–3s，晚高峰更差） | **同样慢**（也没有中国大陆节点，与 Netlify 同一类问题） |
 | ICP 备案 | 无需（境外托管） | 无需（境外托管） |
@@ -147,12 +175,13 @@ const nextConfig = {
 
 | 症状 | 最可能原因 | 处理 |
 |---|---|---|
-| 构建成功但页面白屏、中文不显示 | 字体加载超时 / 字体文件过大 | 检查中文两份的 `preload:false` 是否生效；确认 `--font-head` 的 `local()` 兜底链完整（DEVELOPMENT_PLAN §0/D1） |
+| 构建成功但页面白屏、中文不显示 | 字体加载超时 / 字体文件过大 | 检查中文两份的 `preload:false` 是否生效；确认 `globals.css` 的 `--font-cjk-fallback` 兜底链完整（PingFang SC / Microsoft YaHei 等，见 DEVELOPMENT_PLAN §0/D1） |
 | 页面能打开但没有任何样式 | Tailwind v4 的 `@import "tailwindcss"` 被覆盖 | A3 步骤 3 的 globals.css 合并回滚 |
 | 图片全 404 | 派生品未进 `public/images/`，或走了 `output:"export"` 却没设 `unoptimized` | 重跑 `scripts/build-images.mjs`；核对 §2.1 走法 B 的两处联动 |
 | 地图位置不对 | 坐标来自自动地理编码且未实地核验 | A6 手动在浏览器地图核对一次；文案不得写"精确到门牌" |
-| 分享到微信没有封面图 | `og:image` 是相对路径 / 指向本地 | 确认 `NEXT_PUBLIC_SITE_URL` 已设为线上域名并**重新部署** |
-| `/sitemap.xml` 里全是 localhost | 同上 | 设置 `NEXT_PUBLIC_SITE_URL` → **Clear cache and deploy** |
+| 分享到微信没有封面图 | `og:image` 指向 localhost / 错误域名 | 见下面两行；本项目已改为"域名内置"，正常不会再发生 |
+| `/sitemap.xml` 里全是 localhost | 环境变量把基址设错了（或历史遗留的旧构建） | **先取回全文核对**；确认 Netlify 上没有把 `NEXT_PUBLIC_SITE_URL` 设成 localhost。新代码下这种值会让**构建直接失败**，所以若构建是绿的却仍是 localhost，说明部署的还是旧提交 |
+| 构建失败并报 `NEXT_PUBLIC_SITE_URL 不能用于生产构建` | Netlify 的环境变量设成了 http / localhost / 带路径的值 | **删除或改正那个变量**（线上不需要它），不要去掉校验 |
 | Netlify 云端构建报 `Host key verification failed` | 缺 GitHub App 授权（无 SSH 部署密钥） | 走 §1.1 的浏览器授权流程，这是唯一可行路径 |
 | 本机 `netlify deploy --build` 报 safe-delete 拦截 | 本机沙箱守卫拦了 `.next/turbopack` 递归删除 | **不要在本地构建后直传**，走 Git 集成让 Netlify 云端构建 |
 | 本机 `npx` 命令卡住无输出 | 系统代理 | 本机配了系统代理；必要时设 `NO_PROXY` 或临时关代理 |

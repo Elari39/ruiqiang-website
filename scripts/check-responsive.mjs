@@ -17,11 +17,13 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 import net from "node:net";
+import { findChrome } from "./chrome-path.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const SHOT_DIR = path.join(ROOT, "_shot");
 const PROBE_DIR = path.join(ROOT, "tests", "probe-out");
-const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
+// 不再硬编码路径：按 CHROME_PATH → 常见安装位置 → PATH 查找（见 chrome-path.mjs）
+const CHROME = findChrome();
 
 const VIEWPORTS = [
   { name: "375", width: 375, height: 2600 },

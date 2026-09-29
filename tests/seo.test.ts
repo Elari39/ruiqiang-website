@@ -18,7 +18,7 @@
 import { describe, expect, it } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
-import { PAGE_META, NAV_ITEMS, SITE_NAME, SITE_URL, pageUrl } from "@/lib/site";
+import { PAGE_META, NAV_ITEMS, SITE_NAME, SITE_URL, pageUrl, resolveSiteUrl } from "@/lib/site";
 import { buildMetadata } from "@/lib/metadata";
 import { COMPANY, BUSINESS_SCOPE } from "@/lib/company";
 
@@ -30,6 +30,23 @@ const ROOT = process.cwd();
 /** 产物目录：Next 把每个静态路由的 HTML 放在这里 */
 const SERVER_APP = path.join(ROOT, ".next", "server", "app");
 
+/**
+ * 构建产物里使用的站点基址 —— **不等于**本测试进程的 SITE_URL。
+ *
+ * 为什么必须分开算（踩过这个坑，写清楚以免后人"顺手改回 pageUrl"）：
+ *   `next build` 运行时 NODE_ENV 是 `production`，所以产物里的 canonical /
+ *   og:url / sitemap / robots 用的是**生产域名**；
+ *   而 vitest 进程的 NODE_ENV 是 `test`，SITE_URL 解析出来是 localhost。
+ *   拿 SITE_URL（localhost）去比对产物（生产域名）必然失败。
+ *   这里按"生产构建"的同一套规则算出产物基址，两边口径才一致。
+ */
+const ARTIFACT_BASE = resolveSiteUrl(process.env.NEXT_PUBLIC_SITE_URL, "production");
+
+/** 产物里某个路由应当出现的绝对 URL（与 lib/site.ts 的 pageUrl 同规则） */
+function artifactUrl(pathname: string): string {
+  return pathname === "/" ? `${ARTIFACT_BASE}/` : `${ARTIFACT_BASE}${pathname}`;
+}
+
 /** 读取某个路由的构建产物 HTML；产物不存在时给出可操作的报错 */
 function readHtml(pathname: string): string {
   const file = path.join(
@@ -38,7 +55,9 @@ function readHtml(pathname: string): string {
   );
   if (!fs.existsSync(file)) {
     throw new Error(
-      `缺少构建产物 ${path.relative(ROOT, file)}，请先运行 \`node scripts/run-next.mjs build\``,
+      `缺少构建产物 ${path.relative(ROOT, file)}，请先运行 \`npm run build\`\n` +
+        `（本机若被沙箱的批量删除守卫拦下，用 \`node scripts/run-next.mjs build\`，` +
+        `它只在本机需要，Netlify 云端用标准的 npm run build）。`,
     );
   }
   return fs.readFileSync(file, "utf8");
@@ -207,7 +226,8 @@ describe("A7 · 产物级 SEO 标记", () => {
     const problems: string[] = [];
     for (const p of ALL_PAGES) {
       const html = readHtml(p);
-      const url = pageUrl(p);
+      // ⚠️ 用 artifactUrl（产物基址），不能用 pageUrl（本进程的 localhost）
+      const url = artifactUrl(p);
       if (!html.includes(`rel="canonical"`) || !html.includes(url)) {
         problems.push(`${p} 缺 canonical(${url})`);
       }
@@ -261,7 +281,7 @@ describe("A7 · sitemap 与 robots", () => {
     expect(new Set(locs).size, "sitemap 有重复 URL").toBe(locs.length);
 
     for (const p of ALL_PAGES) {
-      expect(locs, `sitemap 缺 ${p}`).toContain(pageUrl(p));
+      expect(locs, `sitemap 缺 ${p}`).toContain(artifactUrl(p));
     }
     expect(locs.every((u) => u.startsWith("http"))).toBe(true);
     expect(xml).toContain("<urlset");
@@ -293,7 +313,7 @@ describe("A7 · sitemap 与 robots", () => {
     expect(txt).toMatch(/User-Agent:\s*\*/i);
     expect(txt).toMatch(/Allow:\s*\//);
     expect(txt).not.toMatch(/Disallow:\s*\/\s*$/m);
-    expect(txt).toContain(`${SITE_URL}/sitemap.xml`);
+    expect(txt).toContain(`${ARTIFACT_BASE}/sitemap.xml`);
   });
 
   it("★ 不与 public/robots.txt 冲突（两者都产出 /robots.txt）", () => {
@@ -302,6 +322,81 @@ describe("A7 · sitemap 与 robots", () => {
       fs.existsSync(conflict),
       "public/robots.txt 与 app/robots.ts 会同时产出 /robots.txt，必须删除其一",
     ).toBe(false);
+  });
+});
+
+/**
+ * 这一组是 **P0 事故的回归防线**。
+ *
+ * 线上实测（2026-09-28）：canonical / og:url / og:image / sitemap.xml /
+ * robots.txt 全部是 `http://localhost:3000` —— 因为当时 SITE_URL 只认环境变量，
+ * 漏配就静默回落 localhost，而页面本身看着完全正常。
+ *
+ * 为什么原来的断言抓不到：上面那些"产物级"断言只把产物与**同一进程里的
+ * SITE_URL** 比对，体检与病灶出自同一个值，于是两边同时是 localhost、断言恒真。
+ * 这类"自洽式断言"只会证明代码自相一致，证明不了它是否与现实一致。
+ *
+ * 因此下面改为**对绝对事实判定**：产物基址不许是 localhost，
+ * 产物里不许出现 localhost，且 canonical / og:url 必须逐字等于该基址推出的 URL。
+ */
+describe("A7 · 站点绝对 URL 不得泄漏 localhost 到产物（P0 回归防线）", () => {
+  it("★ 构建产物基址本身就不是 localhost，且是 https", () => {
+    expect(
+      ARTIFACT_BASE.includes("localhost"),
+      `生产构建的站点基址解析成了「${ARTIFACT_BASE}」。构建时必须落到真实域名 ——` +
+        `检查 NEXT_PUBLIC_SITE_URL 是否被设成了 localhost（设为 localhost 会让构建直接失败），` +
+        `或 lib/site.ts 里的 PRODUCTION_SITE_URL 是否被改坏。`,
+    ).toBe(false);
+    expect(ARTIFACT_BASE.startsWith("https://")).toBe(true);
+  });
+
+  it("★ 5 页产物的 canonical / og:url / og:image 里不得出现 localhost", () => {
+    const bad: string[] = [];
+    for (const p of ALL_PAGES) {
+      const html = readHtml(p);
+      for (const m of html.matchAll(
+        /(?:rel="canonical" href|property="og:url" content|property="og:image" content|name="twitter:image" content)="([^"]*)"/g,
+      )) {
+        if (m[1].includes("localhost")) bad.push(`${p}: ${m[1]}`);
+      }
+    }
+    expect(
+      bad,
+      `产物的 SEO 元数据指向了 localhost（这正是线上发生过的事故）：\n${bad.join("\n")}`,
+    ).toEqual([]);
+  });
+
+  it("★ sitemap.xml 与 robots.txt 产物里不得出现 localhost", () => {
+    const sitemap = fs.readFileSync(path.join(SERVER_APP, "sitemap.xml.body"), "utf8");
+    const robots = fs.readFileSync(path.join(SERVER_APP, "robots.txt.body"), "utf8");
+    expect(sitemap, "sitemap.xml 里出现 localhost，搜索引擎会拿到 5 个死链").not.toContain(
+      "localhost",
+    );
+    expect(robots, "robots.txt 的 Sitemap 行出现 localhost").not.toContain("localhost");
+  });
+
+  it("★ canonical 与 og:url 逐字等于产物基址推出的页面 URL", () => {
+    for (const p of ALL_PAGES) {
+      const html = readHtml(p);
+      /*
+       * ⚠️ 首页要去掉尾部斜杠再比对：pageUrl("/") 产出的是 `https://host/`，
+       * 但实测 Next 会把 canonical / og:url 里的根路径斜杠**归一化掉**，
+       * 产物里是 `https://host`（无斜杠）。子页（/services 等）不带尾斜杠，
+       * 归一化前后一致。
+       *
+       * 这个差异是实测得出的：早期版本的断言用 `html.includes(pageUrl("/"))`
+       * 之所以看着能过，是因为产物里的 og:image
+       * （`https://host/images/og-cover.jpg`）恰好包含 `https://host/` ——
+       * 又一次"断言碰巧成立"的例子。所以这里显式归一化，而不是靠巧合。
+       */
+      const expected = artifactUrl(p).replace(/\/$/, "");
+      expect(html, `${p} 的 canonical 不等于产物基址 ${expected}`).toContain(
+        `<link rel="canonical" href="${expected}"`,
+      );
+      expect(html, `${p} 的 og:url 不等于产物基址 ${expected}`).toContain(
+        `<meta property="og:url" content="${expected}"`,
+      );
+    }
   });
 });
 

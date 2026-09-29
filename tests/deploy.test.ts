@@ -13,12 +13,19 @@
  * 覆盖三层：
  *   1. **配置层** —— 平台配置文件必须增量式、`next.config` 不削弱图片优化
  *   2. **路由层** —— 无 Route Handler / 动态函数（免费档够用的前提）
- *   3. **环境层** —— 环境变量口径唯一且带可用缺省
+ *   3. **环境层** —— 站点绝对 URL 的解析契约：漏配用内置生产域名，
+ *      配了非 https / 本机地址则**构建失败**（P0 事故的根治手段，见下方
+ *      `A8 · 站点绝对 URL 的解析契约`）
  */
 import { describe, expect, it } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
-import { SITE_URL } from "@/lib/site";
+import {
+  LOCAL_SITE_URL,
+  PRODUCTION_SITE_URL,
+  SITE_URL,
+  resolveSiteUrl,
+} from "@/lib/site";
 
 const ROOT = process.cwd();
 
@@ -134,7 +141,7 @@ describe("A8 · 部署可移植性", () => {
     // 未设 NEXT_PUBLIC_SITE_URL 时必须回落到 localhost，而不是空串或 undefined
     expect(SITE_URL.length).toBeGreaterThan(0);
     if (!process.env.NEXT_PUBLIC_SITE_URL) {
-      expect(SITE_URL).toBe("http://localhost:3000");
+      expect(SITE_URL).toBe(LOCAL_SITE_URL);
     } else {
       expect(SITE_URL.startsWith("http")).toBe(true);
     }
@@ -143,7 +150,88 @@ describe("A8 · 部署可移植性", () => {
   it("SITE_URL 去掉尾部斜杠（避免拼出 //services 这类双斜杠 URL）", () => {
     expect(SITE_URL.endsWith("/")).toBe(false);
   });
+});
 
+/**
+ * 站点绝对 URL 的解析契约。
+ *
+ * ## 为什么要有这一组（P0 事故的根治手段）
+ *
+ * 线上实测（2026-09-28）：canonical / og:url / og:image / sitemap.xml /
+ * robots.txt **全部**是 `http://localhost:3000`。当时 SITE_URL 只认环境变量，
+ * Netlify 侧没配上，于是静默回落 localhost，而页面看起来完全正常。
+ *
+ * 修法不是"这次记得配变量"，而是把域名内置成常量 + 把错值变成构建失败：
+ *   - 漏配 → 生产构建直出 PRODUCTION_SITE_URL（正确值）；
+ *   - 配错（localhost / http / 带路径）→ **抛错终止构建**，不再上线坏产物。
+ *
+ * 这里穷举三种运行环境与各种非法覆盖值，把上述规则钉住。
+ */
+describe("A8 · 站点绝对 URL 的解析契约", () => {
+  it("★ 漏配环境变量时：生产构建用内置生产域名，开发/测试用 localhost", () => {
+    expect(resolveSiteUrl(undefined, "production")).toBe(PRODUCTION_SITE_URL);
+    expect(resolveSiteUrl(undefined, "development")).toBe(LOCAL_SITE_URL);
+    expect(resolveSiteUrl(undefined, "test")).toBe(LOCAL_SITE_URL);
+    // 空白值视同未设（环境变量里多敲了空格不该决定线上域名）
+    expect(resolveSiteUrl("   ", "production")).toBe(PRODUCTION_SITE_URL);
+  });
+
+  it("★ 内置生产域名是 https、不含 localhost、不带尾斜杠", () => {
+    expect(PRODUCTION_SITE_URL.startsWith("https://")).toBe(true);
+    expect(PRODUCTION_SITE_URL).not.toContain("localhost");
+    expect(PRODUCTION_SITE_URL).not.toMatch(/\/$/);
+    expect(LOCAL_SITE_URL).not.toMatch(/\/$/);
+  });
+
+  it("显式环境变量优先于内置域名（换域名与预览环境的唯一开关）", () => {
+    expect(resolveSiteUrl("https://example.com", "production")).toBe("https://example.com");
+    expect(resolveSiteUrl("https://preview.example.com", "development")).toBe(
+      "https://preview.example.com",
+    );
+  });
+
+  it("归一化：去空格、去尾部一个或多个斜杠", () => {
+    expect(resolveSiteUrl("https://example.com/", "production")).toBe("https://example.com");
+    expect(resolveSiteUrl("https://example.com///", "production")).toBe("https://example.com");
+    expect(resolveSiteUrl("  https://example.com/  ", "production")).toBe(
+      "https://example.com",
+    );
+  });
+
+  it("★ 生产构建里非 https / 本机地址 / 带路径的覆盖值必须让构建失败", () => {
+    const rejected = [
+      "http://localhost:3000", // 正是线上事故里的值
+      "https://localhost:3000", // 伪装成 https 的本机地址
+      "http://127.0.0.1:3000",
+      "http://ruiqiang-jianzhu.netlify.app", // 明文 http
+      "ruiqiang-jianzhu.netlify.app", // 漏了协议头
+      "https://example.com/base-path", // 带了路径
+      "https://example.com?x=1", // 带了查询串
+    ];
+    for (const bad of rejected) {
+      expect(
+        () => resolveSiteUrl(bad, "production"),
+        `生产构建不应接受「${bad}」作为站点基址 —— 它会被写进 canonical/og/sitemap`,
+      ).toThrow();
+    }
+
+    // 开发环境不设这道闸门：本机调试时怎么写都不该被拦
+    expect(resolveSiteUrl("http://localhost:3000", "development")).toBe(
+      "http://localhost:3000",
+    );
+  });
+
+  it("本进程的 SITE_URL 与运行环境匹配（vitest 下 NODE_ENV=test）", () => {
+    // ⚠️ 这条与上面「生产构建」的规则**故意不同**：测试进程不是生产构建。
+    // 读构建产物时要另算基址，见 tests/seo.test.ts 的 ARTIFACT_BASE。
+    if (!process.env.NEXT_PUBLIC_SITE_URL) {
+      expect(SITE_URL).toBe(LOCAL_SITE_URL);
+    }
+    expect(SITE_URL).not.toMatch(/\/$/);
+  });
+});
+
+describe("A8 · 依赖与合规闸门", () => {
   it("★ 代码里不出现平台专属环境变量（否则换平台要改代码）", () => {
     const srcFiles = [
       ...walk(path.join(ROOT, "lib")),

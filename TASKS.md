@@ -165,12 +165,12 @@
 
 | 检查项 | 结果 |
 |---|---|
-| `scripts/run-next.mjs build` 退出码 | **0** |
+| `scripts/run-next.mjs build` 退出码（本机沙箱专用入口；云端用 `npm run build`） | **0** |
 | 路由渲染模式 | 8 条全 `○ (Static)`，**零 `ƒ (Dynamic)`** |
 | 是否存在 `vercel.json` | **否**（无平台锁定） |
-| 是否存在 `output:"export"` | **否**（`next/image` 优化保留） |
+| 是否存在 `output:"export"` | **否**（保持走法 A） |
 | `app/` 下 Route Handler 数量 | **0**（无 API 路由，免费档够用） |
-| 源码引用平台专属环境变量 | **0**（只有 `NEXT_PUBLIC_SITE_URL`） |
+| 源码引用平台专属环境变量 | **0**（只有平台无关的 `NEXT_PUBLIC_SITE_URL` 与 `NODE_ENV`） |
 | 营业执照照是否进入 `public/` | **否** |
 | `public/` 下 >400 KB 的图片 | **0** |
 
@@ -199,5 +199,8 @@
 | 8 | 输出可访问 https 地址 | ⬜ | 待 A8.2–A8.5（需账号授权） |
 | — | **偏差记录**：PRD §7.5 要求"6 张全部渲染"，本计划按 §5.4 合规约束公开 5 张 | ✅ | 见 `DEVELOPMENT_PLAN.md` §6、`PLACEHOLDERS.md` §5 |
 
-> **测试总览**：8 个文件 / **151 条**全部通过（A3 13、A4 29、A5 10、A6 22、A7 26、A8 11、company 26、images 14）。
+> **测试总览**：8 个文件 / **167 条**全部通过（theme 13、pages 32、seo 30、deploy 18、
+> responsive 12、map 22、company 26、images 14）。
+> 另有 19 项 headless Chrome 交互探测（`npm run test:probes`）。
+> 本行原记为"151 条"，是当时统计口径过时所致；数字以实际运行为准。
 
