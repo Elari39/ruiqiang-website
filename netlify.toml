@@ -26,14 +26,17 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
-# 安全响应头。
-# 注意：不要在 next.config.ts 里重复配置 headers，否则两边口径会漂移。
-[[headers]]
-  for = "/*"
-  [headers.values]
-    X-Content-Type-Options = "nosniff"
-    Referrer-Policy = "strict-origin-when-cross-origin"
-    X-Frame-Options = "SAMEORIGIN"
+# ⚠️ 安全响应头**不在这里配置**，改在 next.config.ts 的 headers()。
+#
+# 原因（2026-09-28 部署后逐项核对线上响应头才发现）：
+#   `[[headers]] for = "/*"` 对静态资源完全生效，但对 **HTML 页面只生效一半**：
+#     资源 /images/storefront-1600.webp → Referrer-Policy ✅ X-Frame-Options ✅ nosniff ✅
+#     页面 /                            → Referrer-Policy ❌ X-Frame-Options ❌ nosniff ✅
+#   HTML 响应由 Netlify 的 Next.js 运行时接管，它自带一套响应头，
+#   `/*` 规则里只有一部分能透到最终响应 —— 于是"点击劫持防线"（X-Frame-Options）
+#   在所有 HTML 页面上其实并不存在。改用 Next 自己的 headers() 后静态页也会带上。
+#
+# 分工：安全头 → next.config.ts（唯一来源）；缓存策略 → 本文件（边缘层，静态资源实测可靠）。
 
 # public/images/ 下的文件名不含内容哈希（形如 storefront-1600.webp），
 # 所以这里用一周而非一年 —— 重新跑 npm run images 换图后，
