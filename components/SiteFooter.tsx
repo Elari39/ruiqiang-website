@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { COMPANY, MAIL_HREF, TEL_HREF } from "@/lib/company";
 import { NAV_ITEMS, SITE_NAME } from "@/lib/site";
+import { BrandMark } from "@/components/BrandMark";
 
 /**
  * 页脚（PRD §4.6）：工商信息摘要 + 版权声明 + ICP 备案号注释占位。
@@ -18,8 +19,9 @@ export function SiteFooter() {
         <div className="grid gap-8 md:grid-cols-3">
           {/* 工商信息摘要 */}
           <section aria-labelledby="footer-company">
-            <h2 id="footer-company" className="font-head text-base">
-              {SITE_NAME}
+            <h2 id="footer-company" className="font-head flex items-center gap-3 text-base">
+              <BrandMark size={40} />
+              <span className="min-w-0">{SITE_NAME}</span>
             </h2>
             <dl className="mt-3 space-y-1.5 text-sm text-muted-foreground">
               <div className="flex gap-2">

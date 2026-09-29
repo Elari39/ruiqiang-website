@@ -15,6 +15,7 @@ import { usePathname } from "next/navigation";
 import { COMPANY, TEL_HREF } from "@/lib/company";
 import { NAV_ITEMS } from "@/lib/site";
 import { cn } from "@/lib/utils";
+import { BrandMark } from "@/components/BrandMark";
 
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
@@ -60,13 +61,14 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-40 border-b-2 border-border bg-background">
-      <div className="mx-auto flex w-full max-w-6xl items-center gap-4 px-4 py-3 sm:px-6">
+      <div className="mx-auto flex w-full max-w-6xl items-center gap-3 px-4 py-3 sm:gap-4 sm:px-6">
         <Link
           href="/"
-          className="font-head min-w-0 truncate text-sm leading-tight sm:text-base lg:text-lg"
+          className="font-head flex min-w-0 items-center gap-2 text-sm leading-tight sm:text-base lg:text-lg"
           aria-label={`${COMPANY.name} 首页`}
         >
-          {COMPANY.name}
+          <BrandMark className="size-7 lg:size-8" />
+          <span className="min-w-0">{COMPANY.name}</span>
         </Link>
 
         {/* 桌面导航：lg 起才展开。
@@ -106,7 +108,7 @@ export function SiteHeader() {
         </a>
 
         {/* 手机 / 平板端：电话 + 汉堡 */}
-        <div className="ml-auto flex items-center gap-2 lg:hidden">
+        <div className="ml-auto flex shrink-0 items-center gap-2 lg:hidden">
           <a
             href={TEL_HREF}
             className="border-2 border-border bg-brand-green px-2.5 py-1.5 text-sm whitespace-nowrap shadow-sm"
