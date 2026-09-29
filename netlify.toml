@@ -26,29 +26,43 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
-# ⚠️ 安全响应头**不在这里配置**，改在 next.config.ts 的 headers()。
+# ⚠️ 响应头按「谁来产生这个响应」分工，**每个响应头都只有一个来源**。
 #
-# 原因（2026-09-28 部署后逐项核对线上响应头才发现）：
-#   `[[headers]] for = "/*"` 对静态资源完全生效，但对 **HTML 页面只生效一半**：
-#     资源 /images/storefront-1600.webp → Referrer-Policy ✅ X-Frame-Options ✅ nosniff ✅
-#     页面 /                            → Referrer-Policy ❌ X-Frame-Options ❌ nosniff ✅
+# 部署后逐项核对线上响应头得出的结论（2026-09-28）：
+#   `[[headers]] for = "/*"` 对静态资源完全生效，但对 HTML 页面只生效一半。
+#     for = "/*" 时：资源 ✅✅✅ ／ 页面 ❌❌✅（只留下 nosniff）
 #   HTML 响应由 Netlify 的 Next.js 运行时接管，它自带一套响应头，
 #   `/*` 规则里只有一部分能透到最终响应 —— 于是"点击劫持防线"（X-Frame-Options）
-#   在所有 HTML 页面上其实并不存在。改用 Next 自己的 headers() 后静态页也会带上。
+#   在所有 HTML 页面上其实并不存在。
 #
-# 分工：安全头 → next.config.ts（唯一来源）；缓存策略 → 本文件（边缘层，静态资源实测可靠）。
+# 反过来，把安全头全搬到 next.config.ts 的 headers() 之后又实测到：
+#   Next 产生响应 → 三个头齐全；但**由 Netlify 边缘直接吐出的静态文件不吃 headers()**：
+#     页面 / ／ robots.txt ／ sitemap.xml /gallery → ✅✅✅
+#     /images/* ／ /_next/static/*                → ❌❌❌
+#
+# 所以最终按来源分家，互不重叠：
+#   Next 运行时产生的响应（HTML / robots.txt / sitemap.xml）→ next.config.ts
+#   Netlify 边缘直接服务的静态文件（/images/*、/_next/static/*）→ 本文件
+# 这样既没有"写了不生效"，也没有"同一个头两处配置导致漂移"。
 
 # public/images/ 下的文件名不含内容哈希（形如 storefront-1600.webp），
 # 所以这里用一周而非一年 —— 重新跑 npm run images 换图后，
 # immutable 会让用户长时间拿到旧图。
+#
+# nosniff 在这里补上：这些文件由 Netlify 边缘直接吐出，**不受 next.config.ts
+# 的 headers() 管辖**（实测：那一层只覆盖 Next 运行时产生的响应）。
+# 对静态资源而言 nosniff 是有意义的 —— 它阻止浏览器把一个 MIME 不符的文件
+# 嗅探成别的类型来执行。
 
 [[headers]]
   for = "/images/*"
   [headers.values]
     Cache-Control = "public, max-age=604800"
+    X-Content-Type-Options = "nosniff"
 
 # Next.js 的静态产物自带内容哈希，可以放心长缓存。
 [[headers]]
   for = "/_next/static/*"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
+    X-Content-Type-Options = "nosniff"
