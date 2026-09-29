@@ -11,6 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "images": "node scripts/build-images.mjs",
+    "icons": "node scripts/build-icons.mjs",
     "shots:readme": "node scripts/capture-readme-shots.mjs",
     "check:responsive": "node scripts/check-responsive.mjs",
     "check:interactions": "node scripts/check-interactions.mjs",

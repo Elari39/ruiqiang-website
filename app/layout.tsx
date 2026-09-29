@@ -77,6 +77,10 @@ export const metadata: Metadata = {
   description: PAGE_META["/"].description,
   applicationName: SITE_NAME,
   authors: [{ name: SITE_NAME }],
+  icons: {
+    icon: [{ url: "/brand/ruiqiang-mark.svg", type: "image/svg+xml", sizes: "any" }],
+    apple: [{ url: "/brand/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
   openGraph: {
     type: "website",
     locale: "zh_CN",
