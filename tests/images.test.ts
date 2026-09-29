@@ -96,6 +96,7 @@ describe("合规闸门：营业执照照片绝不发布（PRD §5.4 / §7.7）",
     expect(script).toContain(LICENSE_PHOTO);
     // 必须存在"拒绝即终止"的逻辑
     expect(script).toMatch(/process\.exit\(2\)/);
+    expect(script).toContain("assertPublishable(PUBLISHABLE, BLOCKED)");
     expect(script.indexOf("assertPublishable(PUBLISHABLE, BLOCKED)")).toBeLessThan(script.indexOf("sharp(item.src)"));
   });
 });

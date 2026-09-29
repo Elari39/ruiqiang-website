@@ -17,7 +17,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 import net from "node:net";
-import { findChrome } from "./chrome-path.mjs";
+import { chromeArgs, findChrome } from "./chrome-path.mjs";
 import { probeMetadata } from "./probe-contract.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -186,6 +186,7 @@ async function main() {
   const chrome = spawn(
     CHROME,
     [
+      ...chromeArgs(),
       "--headless=new",
       "--disable-gpu",
       "--no-proxy-server",

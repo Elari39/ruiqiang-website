@@ -24,6 +24,11 @@ import { chromium } from "playwright";
 
 const ENV_KEYS = ["CHROME_PATH", "PUPPETEER_EXECUTABLE_PATH", "CHROME_BIN"];
 
+/** Browser flags supplied only by the isolated cloud verification runner. */
+export function chromeArgs() {
+  return JSON.parse(process.env.PROBE_CHROME_ARGS || "[]");
+}
+
 const WELL_KNOWN = [
   // Windows · Chrome
   "C:/Program Files/Google/Chrome/Application/chrome.exe",

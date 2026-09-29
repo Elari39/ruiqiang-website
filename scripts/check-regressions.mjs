@@ -2,12 +2,12 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright";
-import { findChrome } from "./chrome-path.mjs";
+import { chromeArgs, findChrome } from "./chrome-path.mjs";
 import { probeMetadata } from "./probe-contract.mjs";
 
 const base = process.argv[2] || "http://127.0.0.1:3311";
 const live = new URL(base).hostname !== "127.0.0.1" && new URL(base).hostname !== "localhost";
-const browser = await chromium.launch({ executablePath: findChrome() });
+const browser = await chromium.launch({ executablePath: findChrome(), args: chromeArgs() });
 const page = await browser.newPage();
 const failures = [];
 const results = [];

@@ -61,8 +61,12 @@ describe("当前构建的全部浏览器报告", () => {
   });
   it("Netlify 发布入口强制执行完整验收", () => {
     const config = fs.readFileSync("netlify.toml", "utf8");
-    expect(config).toMatch(/command\s*=\s*"[^"]*npm run verify"/);
+    expect(config).toMatch(/command\s*=\s*"npm run verify:netlify"/);
     const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
     expect(pkg.scripts.verify).toBe("npm run lint && npm run test:probes");
+    expect(pkg.scripts["verify:netlify"]).toBe("node scripts/verify-netlify.mjs");
+    const runner = fs.readFileSync("scripts/verify-netlify.mjs", "utf8");
+    expect(runner).toContain('"run", "verify"');
+    expect(runner).toContain("result.status ?? 1");
   });
 });

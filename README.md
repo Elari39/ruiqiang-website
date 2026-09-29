@@ -171,6 +171,7 @@ npm run verify
 - **`npm test`** —— 复核当前源码、构建与报告；缺报告、身份不匹配、空报告均失败，不跳过浏览器套件。
 - **`npm run verify`** —— lint → 标准生产构建 → 类型检查 → 启动服务 → 三组浏览器探测 → 全部断言。报告绑定源码指纹、BUILD_ID、运行 ID 和目标地址；任一步失败阻止发布。
 - 浏览器可用本机 Chrome / Edge（`CHROME_PATH`），或先执行 `npx playwright install --with-deps chromium`。GitHub Actions 和 Netlify 均运行完整门禁。
+- Netlify 使用 `npm run verify:netlify`：在临时目录解压 Chromium 及其运行库，无需 root 或 apt；然后调用同一个 `npm run verify`。GitHub 同时验证系统浏览器与打包浏览器两种环境。
 - 新回归测试覆盖 375/390/767px × 五页的致电入口实际命中、延迟注入角标后的布局、页脚可见性，以及 768→1024→768px 菜单与滚动恢复。独立线上检查使用真实角标，不注入测试夹具。
 
 ## 图片管线
@@ -196,7 +197,7 @@ npm run images           # webp + avif，各 1600/800 两档，单图 < 300 KB
 
 ```toml
 [build]
-  command = "npx playwright install --with-deps chromium && npm run verify"
+  command = "npm run verify:netlify"
   publish = ".next"
 
 [[plugins]]

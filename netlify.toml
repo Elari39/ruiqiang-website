@@ -16,7 +16,7 @@
 #    只写 publish=".next" 会让 _next/static 之外的东西静默失效。
 
 [build]
-  command = "npx playwright install --with-deps chromium && npm run verify"
+  command = "npm run verify:netlify"
   publish = ".next"
 
 # 必须显式声明这个插件。
