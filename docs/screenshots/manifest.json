@@ -1,0 +1,24 @@
+{
+  "site": "https://ruiqiang-jianzhu.netlify.app",
+  "capturedAt": "2026-09-29T11:26:15.463Z",
+  "shots": [
+    {
+      "file": "docs/screenshots/desktop-home.png",
+      "width": 1468,
+      "height": 974,
+      "bytes": 437435
+    },
+    {
+      "file": "docs/screenshots/mobile-home.png",
+      "width": 418,
+      "height": 908,
+      "bytes": 208243
+    },
+    {
+      "file": "docs/screenshots/pages-grid.png",
+      "width": 1468,
+      "height": 998,
+      "bytes": 279854
+    }
+  ]
+}

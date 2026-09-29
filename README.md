@@ -12,9 +12,55 @@
 [![Tests](https://img.shields.io/badge/tests-167_passing-3fb950)](#测试)
 [![License](https://img.shields.io/badge/license-MIT-blue)](./LICENSE)
 
+**🌐 在线访问 · [https://ruiqiang-jianzhu.netlify.app](https://ruiqiang-jianzhu.netlify.app/)**
+
 </div>
 
 ---
+
+## 线上实拍
+
+线上地址：**[https://ruiqiang-jianzhu.netlify.app](https://ruiqiang-jianzhu.netlify.app/)** —— 下列截图即该地址的真实页面。
+
+<div align="center">
+  <a href="https://ruiqiang-jianzhu.netlify.app/">
+    <img src="docs/screenshots/desktop-home.png" alt="首页 · 桌面 1440px — https://ruiqiang-jianzhu.netlify.app/" width="100%">
+  </a>
+  <br>
+  <sub><b>首页 · 桌面 1440px</b> —— 点图直达 <a href="https://ruiqiang-jianzhu.netlify.app/">ruiqiang-jianzhu.netlify.app</a></sub>
+</div>
+
+<div align="center">
+  <a href="https://ruiqiang-jianzhu.netlify.app/">
+    <img src="docs/screenshots/mobile-home.png" alt="首页 · 手机 390px — https://ruiqiang-jianzhu.netlify.app/" width="330">
+  </a>
+  <br>
+  <sub><b>首页 · 手机 390px</b> —— 汉堡菜单 + 底部悬浮致电条</sub>
+</div>
+
+<div align="center">
+  <a href="https://ruiqiang-jianzhu.netlify.app/">
+    <img src="docs/screenshots/pages-grid.png" alt="内页：服务项目 / 工程实拍 / 关于我们 / 联系我们 — https://ruiqiang-jianzhu.netlify.app/" width="100%">
+  </a>
+  <br>
+  <sub><b>内页 4 张</b> —— /services · /gallery · /about · /contact</sub>
+</div>
+
+截图由本机 headless Chrome **实际访问线上地址逐页拍摄**
+（脚本 [`scripts/capture-readme-shots.mjs`](./scripts/capture-readme-shots.mjs)，
+随时可用 `npm run shots:readme` 重拍），页面内容为原始截图，未做任何美化。
+
+两处需要说清楚的边界：
+
+- **窗口外框与地址栏是合成的。** CDP 截图只能拿到页面内容，拿不到浏览器自身的
+  标签栏/地址栏，所以外框由脚本按本站设计令牌（`--border: #000`、`--radius: 0`、
+  硬偏移阴影、品牌黄）用 HTML 渲染合成。地址栏里的域名就是上面这个线上域名，
+  与 `lib/site.ts` 的 `PRODUCTION_SITE_URL` 同源，换域名只需改一处。
+- **图右下角的 `Powered by Netlify` 角标是真的。** 那是 Netlify 免费套餐按访客所见
+  注入的角标，不是后期贴上去的——这里选择保留它，而不是修图抹掉。
+
+> 只截首屏（桌面 1440×900 / 手机 390×844，与 `npm run test:probes` 的探测视口一致），
+> 不做整页长图：README 里的图应该能被一眼看完，而不是让人滚一分钟。
 
 ## 这个项目有什么不一样
 
@@ -90,6 +136,7 @@ npm run test:probes      # 一键跑完整 A5 验收：构建 + 起服务 + 浏�
 npm run typecheck        # tsc --noEmit
 npm run lint             # eslint
 npm run images           # 重建 public/images/ 派生品（见下方说明）
+npm run shots:readme     # 重拍 README 的线上实拍图（headless Chrome 访问线上地址）
 ```
 
 ## 测试
@@ -143,7 +190,7 @@ npm run images           # webp + avif，各 1600/800 两档，单图 < 300 KB
 
 ## 部署
 
-线上地址：**https://ruiqiang-jianzhu.netlify.app**（Netlify + Git 集成）。
+线上地址：**[https://ruiqiang-jianzhu.netlify.app](https://ruiqiang-jianzhu.netlify.app/)**（Netlify + Git 集成）。
 
 源码层零平台专属配置。仓库里唯一与平台相关的文件是 `netlify.toml`，
 它声明 Next 运行时插件并设置响应头缓存策略；`next.config.ts` 里只有一条
@@ -206,6 +253,7 @@ export const PRODUCTION_SITE_URL = "https://ruiqiang-jianzhu.netlify.app";
 | [`TASKS.md`](./TASKS.md) | 任务清单与逐项验收记录 |
 | [`DEPLOY.md`](./DEPLOY.md) | Netlify 部署手册与故障排查 |
 | [`PLACEHOLDERS.md`](./PLACEHOLDERS.md) | 待替换值台账、不进库文件清单、规格偏差记录 |
+| [`docs/screenshots/`](./docs/screenshots/) | README 线上实拍图与拍摄清单（`npm run shots:readme` 重拍） |
 
 ## 已知边界
 
