@@ -169,7 +169,7 @@ export default function RootLayout({
        * md 断点起悬浮条隐藏，内边距随之归零。
        */}
       <body
-        className="min-h-full flex flex-col bg-background text-foreground pb-[var(--mobile-call-bar-space)] md:pb-0"
+        className="min-h-full flex flex-col bg-background text-foreground pb-[calc(var(--mobile-call-bar-space)+var(--mobile-call-bar-offset,0px))] md:pb-0"
         style={
           {
             "--mobile-call-bar-space": `${MOBILE_CALL_BAR_HEIGHT}px`,

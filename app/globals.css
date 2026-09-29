@@ -171,6 +171,15 @@ body {
   line-break: strict;
 }
 
+/* The injected, collapsed Netlify badge occupies the bottom 63px. Keep it
+   visible and give the call bar its own row, including when injection is late.
+   Without a badge (local builds or another host), no extra space is reserved. */
+@media (max-width: 767px) {
+  body:has(#nl-badge-frame) {
+    --mobile-call-bar-offset: 72px;
+  }
+}
+
 /* 标题使用强字重字体链（拉丁 Archivo Black + 汉字 Noto Sans SC 900） */
 h1,
 h2,

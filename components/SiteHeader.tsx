@@ -21,6 +21,15 @@ export function SiteHeader() {
   const pathname = usePathname();
   const triggerRef = useRef<HTMLButtonElement>(null);
 
+  useEffect(() => {
+    const desktop = window.matchMedia("(min-width: 1024px)");
+    const closeOnDesktop = (event: MediaQueryListEvent) => {
+      if (event.matches) setOpen(false);
+    };
+    desktop.addEventListener("change", closeOnDesktop);
+    return () => desktop.removeEventListener("change", closeOnDesktop);
+  }, []);
+
   // Esc 关闭 + 焦点归位 + 锁滚动
   useEffect(() => {
     if (!open) return;

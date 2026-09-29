@@ -18,6 +18,7 @@ import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 import net from "node:net";
 import { findChrome } from "./chrome-path.mjs";
+import { probeMetadata } from "./probe-contract.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const SHOT_DIR = path.join(ROOT, "_shot");
@@ -268,7 +269,7 @@ async function main() {
   }
 
   const out = path.join(PROBE_DIR, "responsive-probe.json");
-  fs.writeFileSync(out, JSON.stringify({ base: BASE, results: report }, null, 2), "utf8");
+  fs.writeFileSync(out, JSON.stringify({ ...probeMetadata(BASE), results: report }, null, 2), "utf8");
 
   const failures = report.filter(
     (r) => r.probe?.hasHorizontalScroll || r.probe?.overflowingCount > 0

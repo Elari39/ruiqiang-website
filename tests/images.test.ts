@@ -11,6 +11,8 @@
 import { describe, expect, it, beforeAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
+import os from "node:os";
+import { assertPublishable } from "../scripts/image-policy.mjs";
 
 const ROOT = process.cwd();
 const PUBLIC = path.join(ROOT, "public");
@@ -71,8 +73,18 @@ describe("合规闸门：营业执照照片绝不发布（PRD §5.4 / §7.7）",
     expect(hits.map(rel)).toEqual([]);
   });
 
-  it("原始素材目录里营业执照照仍然在（只归档，未删除）", () => {
-    expect(fs.existsSync(path.join(SRC_IMG, LICENSE_PHOTO))).toBe(true);
+  it("临时合成图片即使被加入白名单，也被禁发策略拒绝", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "rq-image-policy-"));
+    try {
+      const sharp = (await import("sharp")).default;
+      const src = path.join(root, LICENSE_PHOTO);
+      await sharp({ create: { width: 2, height: 2, channels: 3, background: "white" } }).jpeg().toFile(src);
+      expect(() => assertPublishable([{ src }], [{ file: LICENSE_PHOTO, reason: "禁止发布" }])).toThrow(/拒绝/);
+      // Rejection must not depend on having the actual private photo locally.
+      fs.unlinkSync(src);
+      expect(() => assertPublishable([{ src }], [{ file: LICENSE_PHOTO, reason: "禁止发布" }])).toThrow(/拒绝/);
+      expect(() => assertPublishable([{ src: path.join(root, "public-photo.jpg") }], [{ file: LICENSE_PHOTO, reason: "禁止发布" }])).not.toThrow();
+    } finally { fs.rmSync(root, { recursive: true, force: true }); }
   });
 
   it("管线脚本中营业执照照登记在 BLOCKED 名单里，而非仅仅不在白名单", () => {
@@ -84,6 +96,7 @@ describe("合规闸门：营业执照照片绝不发布（PRD §5.4 / §7.7）",
     expect(script).toContain(LICENSE_PHOTO);
     // 必须存在"拒绝即终止"的逻辑
     expect(script).toMatch(/process\.exit\(2\)/);
+    expect(script.indexOf("assertPublishable(PUBLISHABLE, BLOCKED)")).toBeLessThan(script.indexOf("sharp(item.src)"));
   });
 });
 

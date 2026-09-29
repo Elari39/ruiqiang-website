@@ -9,7 +9,7 @@
 [![React](https://img.shields.io/badge/React-19.3-61DAFB?logo=react&logoColor=black)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
-[![Tests](https://img.shields.io/badge/tests-167_passing-3fb950)](#测试)
+[![Tests](https://img.shields.io/badge/tests-181_passing-3fb950)](#测试)
 [![License](https://img.shields.io/badge/license-MIT-blue)](./LICENSE)
 
 **🌐 在线访问 · [https://ruiqiang-jianzhu.netlify.app](https://ruiqiang-jianzhu.netlify.app/)**
@@ -73,7 +73,7 @@
 - **证件照永不发布。** 营业执照照含统一社会信用代码与法定代表人姓名。
   它不仅在 `public/` 下不存在，在构建管线的 `BLOCKED` 名单里被**显式拒绝并 `exit 2`**——
   即使有人把它塞进派生白名单，构建也会主动终止。
-- **167 条测试覆盖到「产物层」。** 不只测组件渲染，还测构建产物里的
+- **181 条测试覆盖到「产物层」。** 不只测组件渲染，还测构建产物里的
   `<img>` 是否真的带上了 `fetchpriority`、每个页面是否静态生成，
   以及 `canonical` / `og:url` / `og:image` / `sitemap.xml` / `robots.txt`
   里的 URL 是否是**线上域名而不是 `localhost`**。
@@ -131,8 +131,8 @@ npm run dev          # http://localhost:3000
 npm run dev              # 开发服务器
 npm run build            # 生产构建
 npm run start            # 跑生产构建（需先 build）
-npm test                 # 运行全部测试（167 条；探针相关套件缺产物时会响亮跳过）
-npm run test:probes      # 一键跑完整 A5 验收：构建 + 起服务 + 浏览器探测 + 断言
+npm test                 # 复核当前构建及其报告；缺失、旧报告均失败
+npm run verify           # 发布门禁：lint + 构建 + 类型检查 + 三组浏览器探测 + 全部断言
 npm run typecheck        # tsc --noEmit
 npm run lint             # eslint
 npm run images           # 重建 public/images/ 派生品（见下方说明）
@@ -142,10 +142,10 @@ npm run shots:readme     # 重拍 README 的线上实拍图（headless Chrome �
 ## 测试
 
 ```bash
-npm test
+npm run verify
 ```
 
-8 个测试文件、167 条断言，分四层：
+9 个测试文件、181 条断言：
 
 | 层 | 文件 | 职责 |
 | --- | --- | --- |
@@ -154,9 +154,10 @@ npm test
 | 环境契约层 | `tests/deploy.test.ts` | 站点绝对 URL 的解析契约、平台锁定、合规闸门 |
 | 产物层 | `tests/theme.test.ts`、`tests/images.test.ts` | 编译后 CSS 的圆角/阴影真实数值、图片派生管线幂等 |
 | 浏览器探测层 | `tests/responsive.test.ts`、`tests/map.test.ts` | 三档响应式、交互态（灯箱/汉堡菜单/悬浮条）、地图外链 |
+| 验收身份层 | `tests/probe-contract.test.ts` | 拒绝旧报告、错构建、源码变化、空报告；强制覆盖新增回归场景 |
 
 > `tests/deploy.test.ts`、`tests/pages.test.ts`、`tests/seo.test.ts`、`tests/theme.test.ts`
-> 的部分断言读 `.next/` 下的构建产物，因此完整的产物层验证需要**先 `npm run build` 再 `npm test`**。
+> 的部分断言读 `.next/` 下的构建产物；完整验收请运行 **`npm run verify`**，它会重新构建并生成三份浏览器报告。
 > 测试读的是构建结果而不是重新编译的源码——这正是它们能抓到
 > 「源码写了但产物里没有」这类静默回归的原因。
 
@@ -167,11 +168,10 @@ npm test
 
 因此：
 
-- **`npm test`** —— 缺报告时打印醒目横幅并跳过探针套件，其余断言照常跑。
-  这样新克隆的仓库也能一键跑绿，而不是"新环境必然红"。
-- **`npm run test:probes`** —— 自动完成 `build → next start → 两个探针脚本 → vitest`，
-  并以 `REQUIRE_PROBES=1` 跑最后一步，使"探针没产出报告"直接失败而不是被跳过掩盖。
-  需要本机有 Chrome / Chromium / Edge（可用 `CHROME_PATH` 指定）。
+- **`npm test`** —— 复核当前源码、构建与报告；缺报告、身份不匹配、空报告均失败，不跳过浏览器套件。
+- **`npm run verify`** —— lint → 标准生产构建 → 类型检查 → 启动服务 → 三组浏览器探测 → 全部断言。报告绑定源码指纹、BUILD_ID、运行 ID 和目标地址；任一步失败阻止发布。
+- 浏览器可用本机 Chrome / Edge（`CHROME_PATH`），或先执行 `npx playwright install --with-deps chromium`。GitHub Actions 和 Netlify 均运行完整门禁。
+- 新回归测试覆盖 375/390/767px × 五页的致电入口实际命中、延迟注入角标后的布局、页脚可见性，以及 768→1024→768px 菜单与滚动恢复。独立线上检查使用真实角标，不注入测试夹具。
 
 ## 图片管线
 
@@ -184,21 +184,19 @@ npm run images           # webp + avif，各 1600/800 两档，单图 < 300 KB
 ```
 
 > ⚠️ **本仓库不含营业执照照与工商登记摘要源文件**（含敏感工商信息，见
-> [`PLACEHOLDERS.md`](./PLACEHOLDERS.md) §7）。在一台全新克隆的机器上直接跑
-> `npm run images` 会因缺源图而终止 —— 那是合规闸门在按设计工作，不是坏了。
-> 可公开的 4 张工程实拍与门头原图保留入库，所以除此之外的派生链都能重建。
+> [`PLACEHOLDERS.md`](./PLACEHOLDERS.md) §7）。图片管线只读取公开白名单源图，不依赖证件原图。
+> 可公开的 4 张工程实拍与门头原图保留入库，派生链可在全新克隆中重建。图片禁发测试使用临时合成素材，不需要真实证件原图。
 
 ## 部署
 
 线上地址：**[https://ruiqiang-jianzhu.netlify.app](https://ruiqiang-jianzhu.netlify.app/)**（Netlify + Git 集成）。
 
-源码层零平台专属配置。仓库里唯一与平台相关的文件是 `netlify.toml`，
-它声明 Next 运行时插件并设置响应头缓存策略；`next.config.ts` 里只有一条
-平台无关的 `poweredByHeader: false`：
+`netlify.toml` 声明 Next 运行时插件、完整发布验收和静态资源缓存策略；
+`next.config.ts` 配置安全响应头。移动端样式仅在 Netlify 角标实际存在时为其预留空间，换托管平台不会留下空白：
 
 ```toml
 [build]
-  command = "npm run build"
+  command = "npx playwright install --with-deps chromium && npm run verify"
   publish = ".next"
 
 [[plugins]]

@@ -18,6 +18,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import sharp from "sharp";
+import { assertPublishable } from "./image-policy.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const SRC_DIR = path.join(ROOT, "img");
@@ -106,14 +107,14 @@ async function main() {
 
   // ---- 合规闸门：先确认禁发文件没有被列入白名单 ----
   say("== 合规闸门 ==");
+  try {
+    assertPublishable(PUBLISHABLE, BLOCKED);
+  } catch (error) {
+    say(error.message);
+    fs.writeFileSync(REPORT, log.join("\n"), "utf8");
+    process.exit(2);
+  }
   for (const b of BLOCKED) {
-    const listed = PUBLISHABLE.some((p) => path.basename(p.src) === b.file);
-    if (listed) {
-      say(`  [拒绝] ${b.file} 出现在发布白名单中 —— 立即终止`);
-      say(`         原因: ${b.reason}`);
-      fs.writeFileSync(REPORT, log.join("\n"), "utf8");
-      process.exit(2);
-    }
     say(`  [拒绝] ${b.file} —— 不产出任何派生品`);
     say(`         原因: ${b.reason}`);
   }

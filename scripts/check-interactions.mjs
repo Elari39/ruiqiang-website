@@ -20,6 +20,7 @@ import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 import net from "node:net";
 import { findChrome } from "./chrome-path.mjs";
+import { probeMetadata } from "./probe-contract.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const SHOT_DIR = path.join(ROOT, "_shot");
@@ -489,7 +490,7 @@ async function main() {
   }
 
   const out = path.join(PROBE_DIR, "interaction-probe.json");
-  fs.writeFileSync(out, JSON.stringify({ base: BASE, results }, null, 2), "utf8");
+  fs.writeFileSync(out, JSON.stringify({ ...probeMetadata(BASE), results }, null, 2), "utf8");
 
   const failed = results.filter((r) => !r.pass);
   console.log(`\n共 ${results.length} 项，通过 ${results.length - failed.length}，失败 ${failed.length}`);

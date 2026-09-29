@@ -1,41 +1,14 @@
-/**
- * A5 验收测试：响应式与交互态
- *
- * 本测试**不重新启动浏览器**（那属于 scripts/check-*.mjs 的职责），
- * 而是读取那两个脚本产出的探测报告，把结果转成断言。
- *
- * 这样分层的理由：
- *   - 浏览器探测慢且有环境依赖（要 Chrome、要服务在跑），不适合塞进单测；
- *   - 但"探测结果"本身必须被断言，否则报告只是躺在那里的 JSON，
- *     回归时没人会发现数值变坏了。
- *
- * ## 探针产物缺失时怎么办（重要，改动过）
- *
- * 这里原先的写法是"报告不存在就抛错"，理由是"静默跳过就等于把 A5 的验收
- * 悄悄取消了"。这个理由本身是对的，但它带来一个当时没被注意到的后果：
- * `tests/probe-out/` 被 `.gitignore` 排除，因此**在任何一台新克隆的机器上、
- * 任何 CI 里，整个测试套件都必然失败** —— 本机之所以全绿，只是因为残留了
- * 上一轮探测的产物。一个"新环境必然红"的套件等于没有套件。
- *
- * 现在的策略是**响亮跳过 + 可强制**，既不悄悄取消验收，也不阻断新环境：
- *   - 缺少产物 → 打印醒目横幅说明缺什么、怎么生成，并跳过探针相关套件；
- *   - 设了 `REQUIRE_PROBES=1`（`npm run test:probes` 会设）→ 缺产物即**失败**。
- *     也就是说"跳过"这件事本身是被断言看住的，不是默认放行。
- */
 import { describe, expect, it } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
+import { readProbeRun, validateReport } from "../scripts/probe-contract.mjs";
 
 const ROOT = process.cwd();
 const PROBE_DIR = path.join(ROOT, "tests", "probe-out");
 const RESPONSIVE = path.join(PROBE_DIR, "responsive-probe.json");
 const INTERACTION = path.join(PROBE_DIR, "interaction-probe.json");
 
-/** 是否具备探针产物。缺任何一份就跳过探针相关的 describe。 */
-const PROBES_READY = fs.existsSync(RESPONSIVE) && fs.existsSync(INTERACTION);
 
-/** `npm run test:probes` 会设它为 1：此时缺产物必须失败，而不是跳过。 */
-const REQUIRE_PROBES = process.env.REQUIRE_PROBES === "1";
 
 /** 三档宽度（PRD §5.3） */
 const VIEWPORTS = ["375", "768", "1440"];
@@ -90,63 +63,14 @@ type InteractionRecord = {
 function loadJson<T>(p: string, hint: string): T {
   if (!fs.existsSync(p)) {
     throw new Error(
-      `缺少探测报告 ${path.relative(ROOT, p)}。请先运行：\n` +
-        `  1) npm run build && npm start\n` +
-        `  2) ${hint}\n` +
-        `或者直接跑 \`npm run test:probes\`（会自动完成以上全部步骤）。\n` +
-        `（正常情况下本套件已被跳过，走到这里说明报告存在但读不到。）`
+        `缺少探测报告 ${path.relative(ROOT, p)}。请运行 npm run test:probes。\n` +
+        `单独诊断可用 ${hint}，但独立报告不替代完整验收。`
     );
   }
-  return JSON.parse(fs.readFileSync(p, "utf8")) as T;
+  return validateReport(JSON.parse(fs.readFileSync(p, "utf8")), readProbeRun()) as T;
 }
 
-// ---------------------------------------------------------------------------
-// 探针门控自身必须被断言
-//
-// "缺产物就跳过"如果没人看住，就会退化成"永远跳过" —— 那才是原作者担心的
-// 那种悄悄取消验收。所以这里显式区分两种情况：
-//   REQUIRE_PROBES=1（test:probes 走的路径）→ 缺产物必须红；
-//   未设置（普通 npm test）→ 允许跳过，但打印醒目横幅。
-// ---------------------------------------------------------------------------
-
-if (!PROBES_READY) {
-  console.warn(
-    [
-      "",
-      "=".repeat(74),
-      "⚠️  响应式 / 交互态探针套件已跳过：缺少 tests/probe-out/ 下的探测报告。",
-      `    缺: ${[
-        !fs.existsSync(RESPONSIVE) && "responsive-probe.json",
-        !fs.existsSync(INTERACTION) && "interaction-probe.json",
-      ]
-        .filter(Boolean)
-        .join(", ")}`,
-      "    （该目录被 .gitignore 排除，所以新克隆的仓库里本来就没有。）",
-      "    要跑完整 A5 验收：npm run test:probes",
-      "    或手动：npm run build && npm start，再跑 scripts/check-*.mjs。",
-      "    设 REQUIRE_PROBES=1 可让本套件在缺产物时直接失败。",
-      "=".repeat(74),
-      "",
-    ].join("\n")
-  );
-}
-
-describe("A5 · 探针门控", () => {
-  it("REQUIRE_PROBES=1 时，缺少探针产物必须失败（不允许悄悄跳过）", () => {
-    if (REQUIRE_PROBES) {
-      expect(
-        PROBES_READY,
-        "REQUIRE_PROBES=1 但 tests/probe-out/ 下缺少探测报告。" +
-          "请检查 scripts/run-probes.mjs 是否成功跑完了两个探针脚本。",
-      ).toBe(true);
-    } else {
-      // 未强制时这条恒真：门控的语义由上面那条分支表达
-      expect(typeof PROBES_READY).toBe("boolean");
-    }
-  });
-});
-
-describe.skipIf(!PROBES_READY)("三档宽度无横向滚动（PRD §5.3 / §7.3）", () => {
+describe("三档宽度无横向滚动（PRD §5.3 / §7.3）", () => {
   const data = () =>
     loadJson<{ results: ResponsiveRecord[] }>(
       RESPONSIVE,
@@ -232,7 +156,7 @@ describe.skipIf(!PROBES_READY)("三档宽度无横向滚动（PRD §5.3 / §7.3�
   });
 });
 
-describe.skipIf(!PROBES_READY)("交互态验证（弹层 / 汉堡菜单 / 悬浮条遮挡）", () => {
+describe("交互态验证（弹层 / 汉堡菜单 / 悬浮条遮挡）", () => {
   const data = () =>
     loadJson<{ results: InteractionRecord[] }>(
       INTERACTION,

@@ -20,6 +20,7 @@
  */
 import fs from "node:fs";
 import { execFileSync } from "node:child_process";
+import { chromium } from "playwright";
 
 const ENV_KEYS = ["CHROME_PATH", "PUPPETEER_EXECUTABLE_PATH", "CHROME_BIN"];
 
@@ -86,6 +87,9 @@ export function findChrome() {
 
   const viaPath = fromPath();
   if (viaPath) return viaPath;
+
+  const installed = chromium.executablePath();
+  if (fs.existsSync(installed)) return installed;
 
   const tried = [
     ...ENV_KEYS.map((k) => `环境变量 ${k}`),

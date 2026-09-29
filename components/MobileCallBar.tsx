@@ -21,7 +21,7 @@ export function MobileCallBar() {
   return (
     <div
       className="fixed inset-x-0 bottom-0 z-50 border-t-2 border-border bg-brand-green md:hidden"
-      style={{ height: MOBILE_CALL_BAR_HEIGHT }}
+      style={{ height: MOBILE_CALL_BAR_HEIGHT, bottom: "var(--mobile-call-bar-offset, 0px)" }}
     >
       <a
         href={TEL_HREF}
