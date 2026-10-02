@@ -2,21 +2,40 @@
 
 # 重庆锐强建筑劳务有限公司 · 官网
 
-**一个纯静态、零后端的 Next.js 企业官网**
+**以静态生成页面为主、无需业务后端的 Next.js 企业官网**
 建筑劳务分包 · 建设工程施工 · 施工专业作业
 
 [![Next.js](https://img.shields.io/badge/Next.js-16.3.6-000000?logo=next.js&logoColor=white)](https://nextjs.org)
 [![React](https://img.shields.io/badge/React-19.3-61DAFB?logo=react&logoColor=black)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
-[![Tests](https://img.shields.io/badge/tests-181_passing-3fb950)](#测试)
+[![Verify](https://github.com/Elari39/ruiqiang-website/actions/workflows/verify.yml/badge.svg)](https://github.com/Elari39/ruiqiang-website/actions/workflows/verify.yml)
 [![License](https://img.shields.io/badge/license-MIT-blue)](./LICENSE)
 
 **🌐 在线访问 · [https://ruiqiang-jianzhu.netlify.app](https://ruiqiang-jianzhu.netlify.app/)**
 
+[源码仓库](https://github.com/Elari39/ruiqiang-website) · [项目详解](https://elari39.github.io/projects/ruiqiang-website/) · [灰烬女巫的魔典](https://elari39.github.io/)
+
 </div>
 
 ---
+
+五个页面在构建时生成，无数据库、后台管理或表单接收服务。浏览器端保留导航菜单、相册灯箱和地址复制等交互；托管使用 **Next.js 运行时**，产物是 `.next/`，不能当成 `output: "export"` 的静态目录直接上传。
+
+## 目录
+
+- [线上实拍](#线上实拍)
+- [这个项目有什么不一样](#这个项目有什么不一样)
+- [设计](#设计)
+- [页面](#页面)
+- [快速开始](#快速开始)
+- [目录与维护入口](#目录与维护入口)
+- [测试](#测试)
+- [图片管线](#图片管线)
+- [部署](#部署)
+- [项目文档](#项目文档)
+- [已知边界](#已知边界)
+- [许可](#许可)
 
 ## 线上实拍
 
@@ -54,8 +73,8 @@
 
 - **窗口外框与地址栏是合成的。** CDP 截图只能拿到页面内容，拿不到浏览器自身的
   标签栏/地址栏，所以外框由脚本按本站设计令牌（`--border: #000`、`--radius: 0`、
-  硬偏移阴影、品牌黄）用 HTML 渲染合成。地址栏里的域名就是上面这个线上域名，
-  与 `lib/site.ts` 的 `PRODUCTION_SITE_URL` 同源，换域名只需改一处。
+  硬偏移阴影、品牌黄）用 HTML 渲染合成。截图脚本默认访问上面的线上域名，
+  可用 `SITE_URL` 环境变量覆盖；它有自己的默认地址，换域名后需同步核对截图目标。
 - **图右下角的 `Powered by Netlify` 角标是真的。** 那是 Netlify 免费套餐按访客所见
   注入的角标，不是后期贴上去的——这里选择保留它，而不是修图抹掉。
 
@@ -73,7 +92,7 @@
 - **证件照永不发布。** 营业执照照含统一社会信用代码与法定代表人姓名。
   它不仅在 `public/` 下不存在，在构建管线的 `BLOCKED` 名单里被**显式拒绝并 `exit 2`**——
   即使有人把它塞进派生白名单，构建也会主动终止。
-- **181 条测试覆盖到「产物层」。** 不只测组件渲染，还测构建产物里的
+- **自动化测试覆盖到「产物层」。** 不只测组件渲染，还测构建产物里的
   `<img>` 是否真的带上了 `fetchpriority`、每个页面是否静态生成，
   以及 `canonical` / `og:url` / `og:image` / `sitemap.xml` / `robots.txt`
   里的 URL 是否是**线上域名而不是 `localhost`**。
@@ -81,9 +100,10 @@
   （canonical、og:url、sitemap、robots 全中），而页面看起来完全正常。
   当时的断言之所以没抓到，是因为它只把产物与"同一进程里算出的 `SITE_URL`"
   比对 —— 体检与病灶出自同一个值，于是恒真。现在的断言改为对**绝对事实**判定。
-- **源码层零平台锁定。** `next.config.ts` 不绑定任何平台，没有 `output: "export"`，
-  没有 Route Handler，没有平台专属环境变量。仓库里只有一份 `netlify.toml`
-  声明 Next 运行时插件（增量配置，不绑定源码）——换平台只需增删这一个文件。
+- **业务页面与托管配置分开。** `next.config.ts` 配置 Next 的安全响应头，
+  `netlify.toml` 声明 Netlify 插件与边缘缓存；没有业务 Route Handler。
+  仓库另有 Netlify 构建验收入口和角标适配，迁移平台时需要一并检查，
+  目标平台必须支持当前 Next.js 运行时。
 
 ## 设计
 
@@ -122,10 +142,12 @@
 ## 快速开始
 
 ```bash
-# 需要 Node.js 20.9+（本项目在 Node 22 上开发）
-npm install
+# 推荐 Node.js 22（与 CI 一致），使用 npm 与已提交的 package-lock.json
+npm ci
 npm run dev          # http://localhost:3000
 ```
+
+`next/font/google` 会在首次构建时下载字体，再随站点自托管；构建机需要能访问字体服务。仓库已包含公开图片派生品，普通开发无需重新生成图片或获取证件原图。
 
 ### 常用脚本
 
@@ -138,8 +160,29 @@ npm run verify           # 发布门禁：lint + 构建 + 类型检查 + 三组�
 npm run typecheck        # tsc --noEmit
 npm run lint             # eslint
 npm run images           # 重建 public/images/ 派生品（见下方说明）
+npm run icons            # 从品牌 SVG 重建 favicon / Apple 图标
 npm run shots:readme     # 重拍 README 的线上实拍图（headless Chrome 访问线上地址）
 ```
+
+## 目录与维护入口
+
+```text
+app/                         页面、根布局、样式、404、robots 与 sitemap
+components/                  导航、致电条、灯箱、地图外链与图片组件
+lib/company.ts               企业事实、联系方式、经营范围与出处
+lib/content.ts               服务分组、相册 key、图片说明与首页内容
+lib/site.ts                  正式域名、导航和逐页 SEO 文案
+lib/metadata.ts              canonical / Open Graph / Twitter 元数据
+public/brand/                品牌 SVG 与生成的图标
+public/images/               已生成的 AVIF / WebP 与 OG 图片
+img/                         允许入库的公开素材原图
+scripts/                     图片和图标生成、截图、浏览器验收
+tests/                       源码、图片、SEO、构建与探针报告断言
+.github/workflows/verify.yml  系统浏览器 / 打包浏览器两种 CI 环境
+netlify.toml                 Netlify 构建、运行时插件及缓存配置
+```
+
+修改企业资料先更新 `lib/company.ts` 并保留事实出处；修改服务或相册内容核对 `lib/content.ts`。新增图片需要同步 `scripts/build-images.mjs` 的白名单和相册 key，生成派生品后验收。新增页面还需更新导航、`PAGE_META`、sitemap 和相关测试，不能只添加 `page.tsx`。
 
 ## 测试
 
@@ -147,10 +190,11 @@ npm run shots:readme     # 重拍 README 的线上实拍图（headless Chrome �
 npm run verify
 ```
 
-9 个测试文件、181 条断言：
+测试文件位于 `tests/`，数量与通过情况以本次运行输出为准：
 
 | 层 | 文件 | 职责 |
 | --- | --- | --- |
+| 企业事实层 | `tests/company.test.ts` | 工商字段、联系方式、经营范围与地图配置 |
 | 源码层 | `tests/pages.test.ts` | 文案纪律、禁止词表自检、图片键与产物对应 |
 | 元数据层 | `tests/seo.test.ts` | 逐页 title/description 唯一性、canonical/og、JSON-LD 负向断言 |
 | 环境契约层 | `tests/deploy.test.ts` | 站点绝对 URL 的解析契约、平台锁定、合规闸门 |
@@ -176,11 +220,15 @@ npm run verify
 - Netlify 使用 `npm run verify:netlify`：在临时目录解压 Chromium 及其运行库，无需 root 或 apt；然后调用同一个 `npm run verify`。GitHub 同时验证系统浏览器与打包浏览器两种环境。
 - 新回归测试覆盖 375/390/767px × 五页的致电入口实际命中、延迟注入角标后的布局、页脚可见性，以及 768→1024→768px 菜单与滚动恢复。独立线上检查使用真实角标，不注入测试夹具。
 
+完整门禁默认在回环端口 **3311** 启动并清理自己的生产服务，可用 `PROBE_PORT` 修改。证据写入 `tests/probe-out/`、`_shot/` 和 `.next/probe-run.json`。本地独立探测与线上报告不具备同一份构建身份，不能替代 `npm run verify`。
+
 ## 图片管线
 
 `public/images/` 下的派生品由 `scripts/build-images.mjs` 从 `img/` 生成，
 不是手工放进去的。白名单式设计：只有登记过的语义 key 会产出派生品，
 且 `BLOCKED` 名单**优先于**白名单。
+
+`components/SiteImage.tsx` 使用原生 `<picture>` 与 `srcset` 选择预生成的 AVIF / WebP，**没有使用 `next/image`**。首屏图显式设置 `fetchPriority="high"`，其余图懒加载；每张图片都声明尺寸和中文 alt。
 
 ```bash
 npm run images           # webp + avif，各 1600/800 两档，单图 < 300 KB
@@ -206,15 +254,11 @@ npm run images           # webp + avif，各 1600/800 两档，单图 < 300 KB
   package = "@netlify/plugin-nextjs"
 ```
 
-接站只需把 GitHub 仓库连到 Netlify（需在浏览器完成 GitHub App 授权，
-这是 CLI/API 绕不过的一步），`netlify.toml` 会被自动读取。
+在 Netlify 中连接 GitHub 仓库并完成所需授权，构建时会读取 `netlify.toml`。使用 Node.js 22；托管构建入口为 `npm run verify:netlify`，本地 Windows 使用 `npm run verify`。
 
-> **不要**给 `next.config.ts` 加 `output: "export"`。那会让 App Router 的
-> 路由分发退化成静态直传，并要求 `images.unoptimized: true`。
-> `tests/deploy.test.ts` 里有断言钉住这一点。
->
-> ⚠️ 本机 `netlify deploy --build` 会撞上沙箱的 safe-delete 守卫，**不要用**。
-> Next.js 项目走 Git 集成（云端构建）才是正路。
+> 当前发布与验收契约使用 `.next` 和 Netlify Next 插件，`tests/deploy.test.ts` 拒绝 `output: "export"`。迁移到纯静态导出需要重新设计并验证托管、路由及响应头配置，不能只改一个开关。
+
+Next 运行时响应的 `X-Content-Type-Options`、`Referrer-Policy`、`X-Frame-Options` 来自 `next.config.ts`；Netlify 直接服务的 `/images/*` 和 `/_next/static/*` 由 `netlify.toml` 补充 `nosniff` 及缓存规则。发布后需要分别核对页面与静态资源的响应头。
 
 ### 部署环境变量：**不需要设置任何变量**
 
@@ -231,7 +275,7 @@ export const PRODUCTION_SITE_URL = "https://ruiqiang-jianzhu.netlify.app";
 | 未设 `NEXT_PUBLIC_SITE_URL` + 生产构建 | 用 `PRODUCTION_SITE_URL` |
 | 未设 + 开发 / 测试 | `http://localhost:3000` |
 | 显式设了 | 用它（去空格、去尾斜杠） |
-| 显式设了，但**不是干净的 https 主机名**（http / localhost / 带路径或查询串） | **构建直接失败** |
+| 生产构建中显式设了，但**不是干净的 https origin**（http / localhost / 带路径或查询串） | **构建直接失败** |
 
 > **为什么改成这样（这是一次真实事故的修复）。** 早先 `SITE_URL` 只认环境变量、
 > 缺失时静默回落 `localhost`。上线后 Netlify 侧没配上，于是线上的
@@ -260,9 +304,11 @@ export const PRODUCTION_SITE_URL = "https://ruiqiang-jianzhu.netlify.app";
 
 - **地图不含精确坐标。** 注册地址的经纬度在现有材料中无出处，因此**刻意留空**，
   走的是「把完整地址交给图商做关键词检索」的路线——标点位置由图商解析，
-  不存在「我们标错了」的风险。一个错误的地图标点比没有标点更糟。
-- **ICP 备案号未展示。** 境外托管无需备案，当前也无备案信息，故不渲染空模块。
+  实际定位仍需在地图服务中核对。页面不加载地图 SDK，也无需地图 API Key。
+- **ICP 备案号未展示。** 当前材料没有可展示的备案信息；托管或业务范围变化时需重新核对要求。
 - **无客户评价 / 项目业绩 / 资质荣誉模块。** 材料中没有这些事实，按纪律不建模块、不编造。
+- **没有在线提交表单或管理后台。** 联系入口为电话、邮箱、地址复制及地图外链；更新内容需要修改源码并重新发布。
+- **截图是拍摄时的页面记录。** 线上版本、托管角标与截图可能随发布变化，重新拍摄使用 `npm run shots:readme`。
 
 ## 许可
 
